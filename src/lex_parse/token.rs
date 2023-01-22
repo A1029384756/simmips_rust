@@ -61,11 +61,8 @@ impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "{}",
-            format!(
-                "Token: type({}) value ({}) source line ({})",
-                self.token_type, self.token, self.line_number
-            )
+            "Token: type({}) value ({}) source line ({})",
+            self.token_type, self.token, self.line_number
         )
     }
 }
