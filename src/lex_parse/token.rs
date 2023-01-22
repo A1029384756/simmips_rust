@@ -32,7 +32,7 @@ impl Token {
         Token {
             token_type: tt,
             line_number: line,
-            token: "".to_string(),
+            token: "".to_owned(),
         }
     }
 
