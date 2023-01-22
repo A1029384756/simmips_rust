@@ -64,9 +64,7 @@ impl fmt::Display for Token {
             "{}",
             format!(
                 "Token: type({}) value ({}) source line ({})",
-                self.token_type,
-                self.token,
-                self.line_number
+                self.token_type, self.token, self.line_number
             )
         )
     }
@@ -86,7 +84,10 @@ type TokenList = Vec<Token>;
 #[test]
 fn token_print() {
     let t: Token = Token::new_token(TokenType::EQUAL, 35, "=".to_string());
-    assert_eq!(format!("{}", t), "Token: type(EQUAL) value (=) source line (35)");
+    assert_eq!(
+        format!("{}", t),
+        "Token: type(EQUAL) value (=) source line (35)"
+    );
 }
 
 #[test]
