@@ -28,7 +28,7 @@ pub struct Token {
 
 #[allow(dead_code)]
 impl Token {
-    fn new_empty_token(tt: TokenType, line: u32) -> Self {
+    pub fn new_empty_token(tt: TokenType, line: u32) -> Self {
         Token {
             token_type: tt,
             line_number: line,
@@ -36,7 +36,7 @@ impl Token {
         }
     }
 
-    fn new_token(tt: TokenType, line: u32, value: String) -> Self {
+    pub fn new_token(tt: TokenType, line: u32, value: String) -> Self {
         Token {
             token_type: tt,
             line_number: line,
@@ -44,15 +44,15 @@ impl Token {
         }
     }
 
-    fn get_type(&self) -> &TokenType {
+    pub fn get_type(&self) -> &TokenType {
         &self.token_type
     }
 
-    fn get_line(&self) -> &u32 {
+    pub fn get_line(&self) -> &u32 {
         &self.line_number
     }
 
-    fn get_value(&self) -> &str {
+    pub fn get_value(&self) -> &str {
         &self.token
     }
 }
@@ -76,7 +76,7 @@ impl PartialEq for Token {
 }
 
 #[allow(dead_code)]
-type TokenList = Vec<Token>;
+pub type TokenList = Vec<Token>;
 
 #[test]
 fn token_print() {
