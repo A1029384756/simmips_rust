@@ -1,6 +1,7 @@
 use self::token::Token;
 use self::token::TokenType;
-mod token;
+pub mod token;
+pub mod lexer;
 
 #[test]
 fn test_mod() -> () {
@@ -8,7 +9,7 @@ fn test_mod() -> () {
     t.get_value();
     println!("{}", t);
 
-    let t2: Token = Token::new_token(TokenType::ERROR, 35, "erroring".to_owned());
+    let t2: Token = Token::new_token(TokenType::ERROR, 35, "erroring");
 
     assert!(t != t2);
 }

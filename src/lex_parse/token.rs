@@ -1,15 +1,17 @@
 use core::fmt;
+use std::vec::Vec;
 
 #[allow(dead_code)]
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Default, PartialEq)]
 pub enum TokenType {
+    #[default]
+    STRING,
     EOL,
     SEP,
     OPENPAREN,
     CLOSEPAREN,
     STRINGDELIM,
     EQUAL,
-    STRING,
     ERROR,
 }
 
@@ -19,7 +21,7 @@ impl fmt::Display for TokenType {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Token {
     token_type: TokenType,
     line_number: u32,
@@ -36,11 +38,11 @@ impl Token {
         }
     }
 
-    pub fn new_token(tt: TokenType, line: u32, value: String) -> Self {
+    pub fn new_token(tt: TokenType, line: u32, value: &str) -> Self {
         Token {
             token_type: tt,
             line_number: line,
-            token: value,
+            token: value.to_string(),
         }
     }
 
@@ -76,11 +78,30 @@ impl PartialEq for Token {
 }
 
 #[allow(dead_code)]
-pub type TokenList = Vec<Token>;
+#[derive(Debug, Default)]
+pub struct TokenList(Vec<Token>);
+
+impl TokenList {
+    pub fn push(&mut self, token: Token) -> () {
+        self.0.push(token);
+    }
+}
+
+impl fmt::Display for TokenList {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut str: String = String::default();
+        for elem in &self.0 {
+            str.push_str(&format!("({},{:?}) ", elem.token_type, elem.token));
+        }
+        str.pop();
+
+        write!(f, "{}", str)
+    }
+}
 
 #[test]
 fn token_print() {
-    let t: Token = Token::new_token(TokenType::EQUAL, 35, "=".to_string());
+    let t: Token = Token::new_token(TokenType::EQUAL, 35, "=");
     assert_eq!(
         format!("{}", t),
         "Token: type(EQUAL) value (=) source line (35)"
@@ -95,9 +116,9 @@ fn token_type_print() {
 
 #[test]
 fn token_equality() {
-    let t: Token = Token::new_token(TokenType::EQUAL, 35, "=".to_string());
-    let t1: Token = Token::new_token(TokenType::EQUAL, 35, "=".to_string());
-    let t2: Token = Token::new_token(TokenType::SEP, 35, "=".to_string());
+    let t: Token = Token::new_token(TokenType::EQUAL, 35, "=");
+    let t1: Token = Token::new_token(TokenType::EQUAL, 35, "=");
+    let t2: Token = Token::new_token(TokenType::SEP, 35, "=");
 
     assert!(t == t1);
     assert!(t != t2);
