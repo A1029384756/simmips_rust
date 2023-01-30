@@ -15,7 +15,7 @@ pub fn tokenize(in_str: &str) -> TokenList {
     let mut in_paren: bool = false;
 
     let mut iter = in_str.chars().into_iter();
-    while let Some(char) = iter.next() {
+    'tokenize_outer: while let Some(char) = iter.next() {
         match char {
             '=' => {
                 push_str(&mut tmp, &line_number, &mut tokens);
@@ -58,10 +58,7 @@ pub fn tokenize(in_str: &str) -> TokenList {
                                 .push(Token::new_empty_token(TokenType::STRINGDELIM, line_number));
                             break;
                         }
-                        Some(valid_char) => {
-                            tmp.push(valid_char);
-                        }
-                        None => {
+                        None | Some('\n') => {
                             tokens.push(Token::new_token(
                                 TokenType::ERROR,
                                 line_number,
@@ -71,7 +68,10 @@ pub fn tokenize(in_str: &str) -> TokenList {
                                 ),
                             ));
                             tmp.clear();
-                            break;
+                            break 'tokenize_outer;
+                        }
+                        Some(valid_char) => {
+                            tmp.push(valid_char);
                         }
                     }
                 }
@@ -89,7 +89,7 @@ pub fn tokenize(in_str: &str) -> TokenList {
                         &format!("Error: unmatched \" on line {}", line_number),
                     ));
                     tmp.clear();
-                    break;
+                    break 'tokenize_outer;
                 }
 
                 push_str(&mut tmp, &line_number, &mut tokens);
