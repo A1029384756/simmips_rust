@@ -85,6 +85,10 @@ impl TokenList {
     pub fn push(&mut self, token: Token) -> () {
         self.0.push(token);
     }
+
+    pub fn last(&mut self) -> Option<&Token> {
+        self.0.last()
+    }
 }
 
 impl fmt::Display for TokenList {

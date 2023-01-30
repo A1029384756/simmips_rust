@@ -26,7 +26,12 @@ pub fn tokenize(in_str: &str) -> TokenList {
             }
             '#' => {
                 push_str(&mut tmp, &line_number, &mut tokens);
-                
+                if let Some(token) = tokens.last() {
+                    if token.get_type() != &TokenType::EOL {
+                        tokens.push(Token::new_empty_token(TokenType::EOL, line_number));
+                    }
+                }
+
                 loop {
                     let next_char = iter.next();
                     match next_char {
@@ -60,7 +65,10 @@ pub fn tokenize(in_str: &str) -> TokenList {
                             tokens.push(Token::new_token(
                                 TokenType::ERROR,
                                 line_number,
-                                &format!("Error: unmatched string delimeter on line {}", line_number),
+                                &format!(
+                                    "Error: unmatched string delimeter on line {}",
+                                    line_number
+                                ),
                             ));
                             tmp.clear();
                             break;
@@ -94,7 +102,11 @@ pub fn tokenize(in_str: &str) -> TokenList {
             }
             '\n' => {
                 if in_paren {
-                    tokens.push(Token::new_token(TokenType::ERROR, line_number, &format!("Error, unmatched paren on line {}", line_number)));
+                    tokens.push(Token::new_token(
+                        TokenType::ERROR,
+                        line_number,
+                        &format!("Error, unmatched paren on line {}", line_number),
+                    ));
                     break;
                 }
                 push_str(&mut tmp, &line_number, &mut tokens);
@@ -112,7 +124,8 @@ pub fn tokenize(in_str: &str) -> TokenList {
 
 #[test]
 fn tokenize_test() {
-    let data: &str = ".data
+    let data: &str = "#Dummy comment
+        .data # another comment
         LENGTH = 10
 array:  .space LENGTH
 str:    .asciiz \"the (end)\"
