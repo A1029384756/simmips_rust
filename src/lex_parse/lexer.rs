@@ -81,6 +81,7 @@ pub fn tokenize(in_str: &str) -> TokenList {
                         &format!("Error: unmatched \" on line {}", line_number),
                     ));
                     tmp.clear();
+                    break;
                 }
 
                 push_str(&mut tmp, &line_number, &mut tokens);
@@ -92,6 +93,10 @@ pub fn tokenize(in_str: &str) -> TokenList {
                 tokens.push(Token::new_empty_token(TokenType::SEP, line_number));
             }
             '\n' => {
+                if in_paren {
+                    tokens.push(Token::new_token(TokenType::ERROR, line_number, &format!("Error, unmatched paren on line {}", line_number)));
+                    break;
+                }
                 push_str(&mut tmp, &line_number, &mut tokens);
                 tokens.push(Token::new_empty_token(TokenType::EOL, line_number));
                 line_number += 1;
