@@ -60,7 +60,7 @@ pub fn tokenize(in_str: &str) -> TokenList {
                             tokens.push(Token::new_token(
                                 TokenType::ERROR,
                                 line_number,
-                                &format!("Error: unmatched \" on line {}", line_number),
+                                &format!("Error: unmatched string delimeter on line {}", line_number),
                             ));
                             tmp.clear();
                             break;
