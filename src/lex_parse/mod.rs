@@ -1,5 +1,5 @@
-use self::token::Token;
-use self::token::TokenType;
+use self::token::*;
+use self::lexer::*;
 pub mod token;
 pub mod lexer;
 
