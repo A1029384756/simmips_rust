@@ -1,4 +1,6 @@
+use std::path::PathBuf;
 use std::str::Chars;
+use std::fs;
 
 use crate::lex_parse::token::*;
 
@@ -228,5 +230,41 @@ fn tokenize_edge_cases() {
         let data: &str = "";
         let result: TokenList = tokenize(data);
         assert_eq!(result.len(), 0);
+    }
+}
+
+#[test]
+fn file_tokenize_tests() {
+    {
+        let mut path: PathBuf = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        path.push("tests/pass/unix/test00.asm");
+
+        let data: &str = &fs::read_to_string(path).unwrap();
+        let result: TokenList = tokenize(data);
+        assert_ne!(result.last().unwrap().get_type(), &TokenType::ERROR);
+        assert!(result.len() > 0);
+    }
+    {
+        let mut path: PathBuf = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        path.push("tests/fail/unix/test02.asm");
+
+        let data: &str = &fs::read_to_string(path).unwrap();
+        let result: TokenList = tokenize(data);
+        assert_eq!(result.last().unwrap().get_type(), &TokenType::ERROR);
+        assert!(result.len() > 0);
+    }
+    {
+        let mut path: PathBuf = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        path.push("tests/fail/unix/test07.asm");
+
+        let data: &str = &fs::read_to_string(path).unwrap();
+        let result: TokenList = tokenize(data);
+        assert_ne!(result.last().unwrap().get_type(), &TokenType::ERROR);
+        assert!(result.len() > 0);
+        assert_eq!(result.first().unwrap().get_type(), &TokenType::STRING);
+        assert_eq!(result.first().unwrap().get_line(), &6);
+        assert_eq!(result.last().unwrap().get_type(), &TokenType::EOL);
+        assert_eq!(result.last().unwrap().get_line(), &26);
+        assert_eq!(result.len(), 69);
     }
 }
