@@ -77,31 +77,7 @@ impl PartialEq for Token {
     }
 }
 
-#[allow(dead_code)]
-#[derive(Debug, Default)]
-pub struct TokenList(Vec<Token>);
-
-impl TokenList {
-    pub fn push(&mut self, token: Token) -> () {
-        self.0.push(token);
-    }
-
-    pub fn last(&mut self) -> Option<&Token> {
-        self.0.last()
-    }
-}
-
-impl fmt::Display for TokenList {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut str: String = String::default();
-        for elem in &self.0 {
-            str.push_str(&format!("({},{:?}) ", elem.token_type, elem.token));
-        }
-        str.pop();
-
-        write!(f, "{}", str)
-    }
-}
+pub type TokenList = Vec<Token>;
 
 #[test]
 fn token_print() {

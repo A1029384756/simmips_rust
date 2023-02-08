@@ -1,125 +1,163 @@
+use std::str::Chars;
+
 use crate::lex_parse::token::*;
 
-fn push_str(string: &mut String, ln: &u32, tk_list: &mut TokenList) -> () {
-    if !string.is_empty() {
-        tk_list.push(Token::new_token(TokenType::STRING, *ln, &string));
-        string.clear()
+struct TokenizeState {
+    line_num: u32,
+    token_val: String,
+    paren_depth: i32,
+    tokens: TokenList,
+}
+
+impl Default for TokenizeState {
+    fn default() -> Self {
+        TokenizeState {
+            line_num: 1,
+            token_val: String::default(),
+            paren_depth: 0,
+            tokens: TokenList::default(),
+        }
     }
 }
 
 pub fn tokenize(in_str: &str) -> TokenList {
-    let mut line_number: u32 = 0;
-    let mut tokens: TokenList = TokenList::default();
+    let mut state: TokenizeState = TokenizeState::default();
+    let mut line_iter = in_str.lines();
 
-    let mut tmp: String = String::default();
-    let mut in_paren: bool = false;
+    while let Some(line) = line_iter.next() {
+        let mut char_iter = line.chars();
 
-    let mut iter = in_str.chars().into_iter();
-    'tokenize_outer: while let Some(char) = iter.next() {
-        match char {
-            '=' => {
-                push_str(&mut tmp, &line_number, &mut tokens);
-                tokens.push(Token::new_empty_token(TokenType::EQUAL, line_number));
-            }
-            ' ' => {
-                push_str(&mut tmp, &line_number, &mut tokens);
-            }
-            '#' => {
-                push_str(&mut tmp, &line_number, &mut tokens);
-                if let Some(token) = tokens.last() {
-                    if token.get_type() != &TokenType::EOL {
-                        tokens.push(Token::new_empty_token(TokenType::EOL, line_number));
-                    }
+        while let Some(char) = char_iter.next() {
+            match char {
+                '#' => break,
+                '"' => handle_string_delim(&mut state, &mut char_iter),
+                '(' => handle_open_paren(&mut state),
+                ')' => handle_close_paren(&mut state),
+                '=' => handle_eq(&mut state),
+                ',' => handle_sep(&mut state),
+                char if char.is_whitespace() => {
+                    push_str(&mut state);
                 }
-
-                loop {
-                    let next_char = iter.next();
-                    match next_char {
-                        Some('\n') => {
-                            break;
-                        }
-                        Some(..) => {}
-                        None => {
-                            break;
-                        }
-                    }
+                _ => state.token_val.push(char),
+            }
+            if let Some(last_token) = state.tokens.last() {
+                if last_token.get_type() == &TokenType::ERROR {
+                    return state.tokens;
                 }
             }
-            '"' => {
-                push_str(&mut tmp, &line_number, &mut tokens);
-                tokens.push(Token::new_empty_token(TokenType::STRINGDELIM, line_number));
-
-                loop {
-                    let next_char = iter.next();
-                    match next_char {
-                        Some('"') => {
-                            push_str(&mut tmp, &line_number, &mut tokens);
-                            tokens
-                                .push(Token::new_empty_token(TokenType::STRINGDELIM, line_number));
-                            break;
-                        }
-                        None | Some('\n') => {
-                            tokens.push(Token::new_token(
-                                TokenType::ERROR,
-                                line_number,
-                                &format!(
-                                    "Error: unmatched string delimeter on line {}",
-                                    line_number
-                                ),
-                            ));
-                            tmp.clear();
-                            break 'tokenize_outer;
-                        }
-                        Some(valid_char) => {
-                            tmp.push(valid_char);
-                        }
-                    }
-                }
-            }
-            '(' => {
-                push_str(&mut tmp, &line_number, &mut tokens);
-                tokens.push(Token::new_empty_token(TokenType::OPENPAREN, line_number));
-                in_paren = true;
-            }
-            ')' => {
-                if !in_paren {
-                    tokens.push(Token::new_token(
-                        TokenType::ERROR,
-                        line_number,
-                        &format!("Error: unmatched \" on line {}", line_number),
-                    ));
-                    tmp.clear();
-                    break 'tokenize_outer;
-                }
-
-                push_str(&mut tmp, &line_number, &mut tokens);
-                tokens.push(Token::new_empty_token(TokenType::CLOSEPAREN, line_number));
-                in_paren = false;
-            }
-            ',' => {
-                push_str(&mut tmp, &line_number, &mut tokens);
-                tokens.push(Token::new_empty_token(TokenType::SEP, line_number));
-            }
-            '\n' => {
-                if in_paren {
-                    tokens.push(Token::new_token(
-                        TokenType::ERROR,
-                        line_number,
-                        &format!("Error, unmatched paren on line {}", line_number),
-                    ));
-                    break;
-                }
-                push_str(&mut tmp, &line_number, &mut tokens);
-                tokens.push(Token::new_empty_token(TokenType::EOL, line_number));
-                line_number += 1;
-            }
-            _ => tmp.push(char),
         }
+
+        if state.paren_depth > 0 {
+            state.tokens.push(Token::new_token(
+                TokenType::ERROR,
+                state.line_num,
+                "Error: mismatched paren",
+            ));
+            return state.tokens;
+        }
+
+        push_str(&mut state);
+        if let Some(last_token) = state.tokens.last() {
+            if last_token.get_type() != &TokenType::EOL {
+                state
+                    .tokens
+                    .push(Token::new_empty_token(TokenType::EOL, state.line_num));
+            }
+        }
+
+        state.line_num += 1;
     }
 
-    push_str(&mut tmp, &line_number, &mut tokens);
+    state.tokens
+}
 
-    tokens
+fn push_str(state: &mut TokenizeState) -> () {
+    if !state.token_val.is_empty() {
+        state.tokens.push(Token::new_token(
+            TokenType::STRING,
+            state.line_num,
+            &state.token_val,
+        ));
+        state.token_val.clear();
+    }
+}
+
+fn handle_string_delim(state: &mut TokenizeState, char_iter: &mut Chars) -> () {
+    push_str(state);
+    state.tokens.push(Token::new_empty_token(
+        TokenType::STRINGDELIM,
+        state.line_num,
+    ));
+    loop {
+        let string_char = char_iter.next();
+        match string_char {
+            Some('"') => {
+                state.tokens.push(Token::new_token(
+                    TokenType::STRING,
+                    state.line_num,
+                    &state.token_val,
+                ));
+                state.token_val.clear();
+                state.tokens.push(Token::new_empty_token(
+                    TokenType::STRINGDELIM,
+                    state.line_num,
+                ));
+                break;
+            }
+            Some(string_char) => {
+                state.token_val.push(string_char);
+            }
+            None => {
+                state.tokens.push(Token::new_token(
+                    TokenType::ERROR,
+                    state.line_num,
+                    "Error: misplaced string delim",
+                ));
+                break;
+            }
+        }
+    }
+}
+
+fn handle_open_paren(state: &mut TokenizeState) -> () {
+    push_str(state);
+    state
+        .tokens
+        .push(Token::new_empty_token(TokenType::OPENPAREN, state.line_num));
+    state.paren_depth += 1;
+}
+
+fn handle_close_paren(state: &mut TokenizeState) -> () {
+    state.paren_depth -= 1;
+
+    if state.paren_depth < 0 {
+        state.tokens.push(Token::new_token(
+            TokenType::ERROR,
+            state.line_num,
+            "Error: mismatched paren",
+        ));
+        return;
+    }
+
+    push_str(state);
+    state.tokens.push(Token::new_empty_token(
+        TokenType::CLOSEPAREN,
+        state.line_num,
+    ));
+}
+
+fn handle_eq(state: &mut TokenizeState) -> () {
+    push_str(state);
+    state
+        .tokens
+        .push(Token::new_empty_token(TokenType::EQUAL, state.line_num));
+}
+
+fn handle_sep(state: &mut TokenizeState) -> () {
+    push_str(state);
+    state
+        .tokens
+        .push(Token::new_empty_token(TokenType::SEP, state.line_num));
 }
 
 #[test]
@@ -127,14 +165,68 @@ fn tokenize_test() {
     let data: &str = "#Dummy comment
         .data # another comment
         LENGTH = 10
-array:  .space LENGTH
-str:    .asciiz \"the (end)\"
+        array:  .space LENGTH
+        str:    .asciiz \"the (end)\"
         .text
-main:  lw $t0, array
-       lw $t1, ($t0)
+        main:  lw $t0, array
+        lw $t1, ($t0)
         ";
 
-    let cmp: &str = "(STRING,\".data\") (EOL,\"\") (STRING,\"LENGTH\") (EQUAL,\"\") (STRING,\"10\") (EOL,\"\") (STRING,\"array:\") (STRING,\".space\") (STRING,\"LENGTH\") (EOL,\"\") (STRING,\"str:\") (STRING,\".asciiz\") (STRINGDELIM,\"\") (STRING,\"the (end)\") (STRINGDELIM,\"\") (EOL,\"\") (STRING,\".text\") (EOL,\"\") (STRING,\"main:\") (STRING,\"lw\") (STRING,\"$t0\") (SEP,\"\") (STRING,\"array\") (EOL,\"\") (STRING,\"lw\") (STRING,\"$t1\") (SEP,\"\") (OPENPAREN,\"\") (STRING,\"$t0\") (CLOSEPAREN,\"\") (EOL,\"\")";
+    let result: TokenList = tokenize(data);
 
-    assert_eq!(format!("{}", cmp), format!("{}", tokenize(data)));
+    assert_eq!(result.last().unwrap().get_type(), &TokenType::EOL);
+    assert_eq!(result.first().unwrap().get_type(), &TokenType::STRING);
+    assert_eq!(result.first().unwrap().get_line(), &2);
+    assert_eq!(result.len(), 31);
+}
+
+#[test]
+fn tokenize_edge_cases() {
+    {
+        let data: &str = "string = 100\n\"\"data";
+        let result: TokenList = tokenize(data);
+        assert_eq!(result.last().unwrap().get_type(), &TokenType::EOL);
+        assert_eq!(result.len(), 9);
+        assert_eq!(result.get(5).unwrap().get_type(), &TokenType::STRING);
+        assert_eq!(result.get(5).unwrap().get_value(), "");
+    }
+    {
+        let data: &str = "test\n\ndummydata\n";
+        let result: TokenList = tokenize(data);
+        assert_eq!(result.len(), 4);
+    }
+    {
+        let data: &str = "(()data";
+        let result: TokenList = tokenize(data);
+        assert_eq!(result.len(), 4);
+        assert_eq!(result.last().unwrap().get_type(), &TokenType::ERROR);
+    }
+    {
+        let data: &str = "(data))";
+        let result: TokenList = tokenize(data);
+        assert_eq!(result.len(), 4);
+        assert_eq!(result.last().unwrap().get_type(), &TokenType::ERROR);
+    }
+    {
+        let data: &str = "\n\n#comment \"here\"\n\n";
+        let result: TokenList = tokenize(data);
+        assert_eq!(result.len(), 0);
+    }
+    {
+        let data: &str = "\"( #\"";
+        let result: TokenList = tokenize(data);
+        assert_eq!(result.len(), 4);
+        assert_eq!(result.last().unwrap().get_type(), &TokenType::EOL);
+    }
+    {
+        let data: &str = "\"";
+        let result: TokenList = tokenize(data);
+        assert_eq!(result.len(), 2);
+        assert_eq!(result.last().unwrap().get_type(), &TokenType::ERROR);
+    }
+    {
+        let data: &str = "";
+        let result: TokenList = tokenize(data);
+        assert_eq!(result.len(), 0);
+    }
 }
