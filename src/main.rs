@@ -1,55 +1,80 @@
-use iced::widget::{button, column, text};
-use iced::{executor, Command, Theme};
-use iced::{Alignment, Application, Element, Settings};
 mod lex_parse;
 
-struct Counter {
-    value: i32,
+use adw::prelude::*;
+use relm4::prelude::*;
+
+struct App {
+    counter: u8,
 }
 
-impl Application for Counter {
-    type Executor = executor::Default;
-    type Message = Message;
-    type Theme = Theme;
-    type Flags = ();
+#[derive(Debug)]
+enum Msg {
+    Increment,
+    Decrement,
+}
 
-    fn new(_flags: ()) -> (Counter, Command<Self::Message>) {
-        (Counter { value: 0 }, Command::none())
+#[relm4::component]
+impl SimpleComponent for App {
+    type Init = u8;
+    type Input = Msg;
+    type Output = ();
+
+    view! {
+        gtk::Window {
+            set_title: Some("Simple app"),
+            set_default_size: (300, 100),
+
+            gtk::Box {
+                set_orientation: gtk::Orientation::Vertical,
+                set_spacing: 5,
+                set_margin_all: 5,
+
+                gtk::Button {
+                    set_label: "Increment",
+                    connect_clicked => Msg::Increment,
+                },
+
+                gtk::Button {
+                    set_label: "Decrement",
+                    connect_clicked => Msg::Decrement,
+                },
+
+                gtk::Label {
+                    #[watch]
+                    set_label: &format!("Counter: {}", model.counter),
+                    set_margin_all: 5,
+                }
+            }
+        }
     }
 
-    fn title(&self) -> String {
-        String::from("Counter - Iced Test")
+    // Initialize the component.
+    fn init(
+        counter: Self::Init,
+        root: &Self::Root,
+        sender: ComponentSender<Self>,
+    ) -> ComponentParts<Self> {
+        let model = App { counter };
+
+        // Insert the code generation of the view! macro here
+        let widgets = view_output!();
+
+        ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, message: Message) -> Command<Self::Message> {
-        match message {
-            Message::IncrementPressed => self.value += 1,
-            Message::DecrementPressed => self.value -= 1,
-        };
-        Command::none()
-    }
-
-    fn view(&self) -> Element<Message> {
-        column![
-            button("Increment").on_press(Message::IncrementPressed),
-            text(self.value).size(50),
-            button("Decrement").on_press(Message::DecrementPressed),
-        ]
-        .padding(20)
-        .align_items(Alignment::Center)
-        .into()
+    fn update(&mut self, msg: Self::Input, _sender: ComponentSender<Self>) {
+        match msg {
+            Msg::Increment => {
+                self.counter = self.counter.wrapping_add(1);
+            }
+            Msg::Decrement => {
+                self.counter = self.counter.wrapping_sub(1);
+            }
+        }
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub enum Message {
-    IncrementPressed,
-    DecrementPressed,
-}
-
-fn main() -> iced::Result {
-    Counter::run(Settings {
-        antialiasing: true,
-        ..Settings::default()
-    })
+fn main() {
+    let app = RelmApp::new("relm4.example.simple");
+    app.run::<App>(0);
 }

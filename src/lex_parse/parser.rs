@@ -584,30 +584,30 @@ fn layout_int_compat(layout: &str, value: &str) -> bool {
         Ok(val) => match layout {
             ".word" => {
                 if signed {
-                    val >= i32::MIN.into() && val <= i32::MAX.into()
+                    val >= i32::MIN as i64 && val <= i32::MAX as i64
                 } else {
-                    val <= u32::MAX.into()
+                    val <= u32::MAX as i64
                 }
             }
             ".half" => {
                 if signed {
-                    val >= i16::MIN.into() && val <= i16::MAX.into()
+                    val >= i16::MIN as i64 && val <= i16::MAX as i64
                 } else {
-                    val <= u16::MAX.into()
+                    val <= u16::MAX as i64
                 }
             }
             ".byte" => {
                 if signed {
-                    val >= i8::MIN.into() && val <= i8::MAX.into()
+                    val >= i8::MIN as i64 && val <= i8::MAX as i64
                 } else {
-                    val <= u8::MAX.into()
+                    val <= u8::MAX as i64
                 }
             }
             ".space" => {
                 if signed {
-                    val.is_positive() && val <= i32::MAX.into()
+                    val.is_positive() && val <= i32::MAX as i64
                 } else {
-                    val <= u32::MAX.into()
+                    val <= u32::MAX as i64
                 }
             }
             _ => false,
