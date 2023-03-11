@@ -70,28 +70,44 @@ impl VirtualMachineInterface for VirtualMachine {
                         self.registers[*reg as usize] = self.hi;
                         self.pc += 1;
                     }
-                    _ => (),
+                    _ => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::MFLO => match inst.args.first() {
                     Some(Argument::REGISTER(reg)) => {
                         self.registers[*reg as usize] = self.lo;
                         self.pc += 1;
                     }
-                    _ => (),
+                    _ => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::MTHI => match inst.args.first() {
                     Some(Argument::REGISTER(reg)) => {
                         self.hi = self.get_register(*reg);
                         self.pc += 1;
                     }
-                    _ => (),
+                    _ => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::MTLO => match inst.args.first() {
                     Some(Argument::REGISTER(reg)) => {
                         self.lo = self.get_register(*reg);
                         self.pc += 1;
                     }
-                    _ => (),
+                    _ => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::LW => match self.get_data_instruction() {
                     Some((dest, address)) => match self
@@ -111,7 +127,11 @@ impl VirtualMachineInterface for VirtualMachine {
                                 "Attempted to load from invalid memory address".to_string();
                         }
                     },
-                    None => (),
+                    None => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::LH => match self.get_data_instruction() {
                     Some((dest, address)) => match self
@@ -131,7 +151,11 @@ impl VirtualMachineInterface for VirtualMachine {
                                 "Attempted to load from invalid memory address".to_string();
                         }
                     },
-                    None => (),
+                    None => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::LB => match self.get_data_instruction() {
                     Some((dest, address)) => match self.data_memory.get(address as usize) {
@@ -145,14 +169,22 @@ impl VirtualMachineInterface for VirtualMachine {
                                 "Attempted to load from invalid memory address".to_string();
                         }
                     },
-                    None => (),
+                    None => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::LA => match self.get_data_instruction() {
                     Some((dest, address)) => {
                         self.registers[*dest as usize] = address;
                         self.pc += 1;
                     }
-                    None => (),
+                    None => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::SW => match self.get_data_instruction() {
                     Some((source, address)) => {
@@ -165,7 +197,11 @@ impl VirtualMachineInterface for VirtualMachine {
                             });
                         self.pc += 1;
                     }
-                    None => (),
+                    None => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::SH => match self.get_data_instruction() {
                     Some((source, address)) => {
@@ -179,7 +215,11 @@ impl VirtualMachineInterface for VirtualMachine {
                             });
                         self.pc += 1;
                     }
-                    None => (),
+                    None => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::SB => match self.get_data_instruction() {
                     Some((source, address)) => {
@@ -187,48 +227,73 @@ impl VirtualMachineInterface for VirtualMachine {
                             *self.get_register(*source).to_le_bytes().first().unwrap();
                         self.pc += 1;
                     }
-                    None => (),
+                    None => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::ADD => match self.get_signed_instruction() {
-                    Some((dest, a, b)) => match i32::try_from((a as i32 as i64) + (b as i32 as i64)) {
-                        Ok(result) => {
-                            self.registers[*dest as usize] = result as u32;
-                            self.pc += 1;
+                    Some((dest, a, b)) => {
+                        match i32::try_from((a as i32 as i64) + (b as i32 as i64)) {
+                            Ok(result) => {
+                                self.registers[*dest as usize] = result as u32;
+                                self.pc += 1;
+                            }
+                            Err(..) => {
+                                self.error_state = true;
+                                self.error_message =
+                                    "Integer overflow performing addition".to_string();
+                            }
                         }
-                        Err(..) => {
-                            self.error_state = true;
-                            self.error_message = "Integer overflow performing addition".to_string();
-                        }
-                    },
-                    None => (),
+                    }
+                    None => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::ADDU => match self.get_unsigned_instruction() {
                     Some((dest, a, b)) => {
                         self.registers[*dest as usize] = ((a as u64) + (b as u64)) as u32;
                         self.pc += 1;
                     }
-                    None => todo!(),
+                    None => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::SUB => match self.get_signed_instruction() {
-                    Some((dest, a, b)) => match i32::try_from((a as i32 as i64) - (b as i32 as i64)) {
-                        Ok(result) => {
-                            self.registers[*dest as usize] = result as u32;
-                            self.pc += 1;
+                    Some((dest, a, b)) => {
+                        match i32::try_from((a as i32 as i64) - (b as i32 as i64)) {
+                            Ok(result) => {
+                                self.registers[*dest as usize] = result as u32;
+                                self.pc += 1;
+                            }
+                            Err(..) => {
+                                self.error_state = true;
+                                self.error_message =
+                                    "Integer overflow performing subtraction".to_string();
+                            }
                         }
-                        Err(..) => {
-                            self.error_state = true;
-                            self.error_message =
-                                "Integer overflow performing subtraction".to_string();
-                        }
-                    },
-                    None => (),
+                    }
+                    None => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::SUBU => match self.get_unsigned_instruction() {
                     Some((dest, a, b)) => {
                         self.registers[*dest as usize] = ((a as u64) - (b as u64)) as u32;
                         self.pc += 1;
                     }
-                    None => (),
+                    None => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::MUL => match self.get_signed_instruction() {
                     Some((dest, a, b)) => {
@@ -238,21 +303,31 @@ impl VirtualMachineInterface for VirtualMachine {
                         self.lo = result as u32;
                         self.pc += 1;
                     }
-                    None => (),
+                    None => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::MULO => match self.get_signed_instruction() {
-                    Some((dest, a, b)) => match i32::try_from((a as i32 as i64) * (b as i32 as i64)) {
-                        Ok(result) => {
-                            self.registers[*dest as usize] = result as u32;
-                            self.pc += 1;
+                    Some((dest, a, b)) => {
+                        match i32::try_from((a as i32 as i64) * (b as i32 as i64)) {
+                            Ok(result) => {
+                                self.registers[*dest as usize] = result as u32;
+                                self.pc += 1;
+                            }
+                            Err(..) => {
+                                self.error_state = true;
+                                self.error_message =
+                                    "Integer overflow performing multiplication".to_string();
+                            }
                         }
-                        Err(..) => {
-                            self.error_state = true;
-                            self.error_message =
-                                "Integer overflow performing multiplication".to_string();
-                        }
-                    },
-                    None => (),
+                    }
+                    None => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::MULOU => match self.get_unsigned_instruction() {
                     Some((dest, a, b)) => match u32::try_from((a as u64) * (b as u64)) {
@@ -266,7 +341,11 @@ impl VirtualMachineInterface for VirtualMachine {
                                 "Integer overflow performing multiplication".to_string();
                         }
                     },
-                    None => (),
+                    None => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::REM => match self.get_signed_instruction() {
                     Some((dest, a, b)) => {
@@ -276,7 +355,11 @@ impl VirtualMachineInterface for VirtualMachine {
                         self.lo = result as u32;
                         self.pc += 1;
                     }
-                    None => (),
+                    None => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::REMU => match self.get_unsigned_instruction() {
                     Some((dest, a, b)) => {
@@ -286,7 +369,11 @@ impl VirtualMachineInterface for VirtualMachine {
                         self.lo = result as u32;
                         self.pc += 1;
                     }
-                    None => (),
+                    None => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::MULT => match (inst.args.first(), inst.args.get(1)) {
                     (Some(Argument::REGISTER(a)), Some(Argument::REGISTER(b))) => {
@@ -297,7 +384,11 @@ impl VirtualMachineInterface for VirtualMachine {
                         self.lo = result as u32;
                         self.pc += 1;
                     }
-                    _ => (),
+                    _ => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::MULTU => match (inst.args.first(), inst.args.get(1)) {
                     (Some(Argument::REGISTER(a)), Some(Argument::REGISTER(b))) => {
@@ -307,7 +398,11 @@ impl VirtualMachineInterface for VirtualMachine {
                         self.lo = result as u32;
                         self.pc += 1;
                     }
-                    _ => (),
+                    _ => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::ABS => match (inst.args.first(), inst.args.get(1)) {
                     (Some(Argument::REGISTER(dest)), Some(Argument::REGISTER(src))) => {
@@ -315,7 +410,11 @@ impl VirtualMachineInterface for VirtualMachine {
                             (self.registers[*src as usize] as i32).abs() as u32;
                         self.pc += 1;
                     }
-                    _ => (),
+                    _ => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::NEG => match (inst.args.first(), inst.args.get(1)) {
                     (Some(Argument::REGISTER(dest)), Some(Argument::REGISTER(src))) => {
@@ -331,7 +430,11 @@ impl VirtualMachineInterface for VirtualMachine {
                             }
                         }
                     }
-                    _ => (),
+                    _ => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::NEGU => match (inst.args.first(), inst.args.get(1)) {
                     (Some(Argument::REGISTER(dest)), Some(Argument::REGISTER(src))) => {
@@ -339,49 +442,77 @@ impl VirtualMachineInterface for VirtualMachine {
                             -(self.registers[*src as usize] as i32) as u32;
                         self.pc += 1;
                     }
-                    _ => (),
+                    _ => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::AND => match self.get_unsigned_instruction() {
                     Some((dest, a, b)) => {
                         self.registers[*dest as usize] = a & b;
                         self.pc += 1;
                     }
-                    None => (),
+                    None => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::NOR => match self.get_unsigned_instruction() {
                     Some((dest, a, b)) => {
                         self.registers[*dest as usize] = !(a | b);
                         self.pc += 1;
                     }
-                    None => (),
+                    None => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::OR => match self.get_unsigned_instruction() {
                     Some((dest, a, b)) => {
                         self.registers[*dest as usize] = a | b;
                         self.pc += 1;
                     }
-                    None => (),
+                    None => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::XOR => match self.get_unsigned_instruction() {
                     Some((dest, a, b)) => {
                         self.registers[*dest as usize] = a ^ b;
                         self.pc += 1;
                     }
-                    None => (),
+                    None => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::MOVE => match (inst.args.first(), inst.args.get(1)) {
                     (Some(Argument::REGISTER(dest)), Some(Argument::REGISTER(src))) => {
                         self.registers[*dest as usize] = self.registers[*src as usize];
                         self.pc += 1;
                     }
-                    _ => (),
+                    _ => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::LI => match (inst.args.first(), inst.args.get(1)) {
                     (Some(Argument::REGISTER(dest)), Some(Argument::IMMEDIATE(imm))) => {
                         self.registers[*dest as usize] = *imm;
                         self.pc += 1;
                     }
-                    _ => (),
+                    _ => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::DIV => match (inst.args.first(), inst.args.get(1), inst.args.get(2)) {
                     (
@@ -431,7 +562,11 @@ impl VirtualMachineInterface for VirtualMachine {
                         }
                         _ => self.pc += 1,
                     },
-                    _ => (),
+                    _ => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::DIVU => match (inst.args.first(), inst.args.get(1), inst.args.get(2)) {
                     (
@@ -477,7 +612,11 @@ impl VirtualMachineInterface for VirtualMachine {
                         }
                         _ => self.pc += 1,
                     },
-                    _ => (),
+                    _ => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::NOT => match (inst.args.first(), inst.args.get(1)) {
                     (Some(Argument::REGISTER(dest)), Some(Argument::REGISTER(src))) => {
@@ -488,95 +627,159 @@ impl VirtualMachineInterface for VirtualMachine {
                         self.registers[*dest as usize] = !(*src);
                         self.pc += 1;
                     }
-                    _ => (),
+                    _ => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::BEQ => match self.get_branch_operation() {
                     Some((a, b, label)) => {
                         if a == b {
                             match self.labels.get(&label) {
                                 Some(addr) => self.pc = *addr,
-                                None => (),
+                                None => {
+                                    self.error_state = true;
+                                    self.error_message =
+                                        "Nonexistent label, resulting from parse error".to_string();
+                                }
                             }
                         } else {
                             self.pc += 1;
                         }
                     }
-                    _ => (),
+                    _ => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::BNE => match self.get_branch_operation() {
                     Some((a, b, label)) => {
                         if a != b {
                             match self.labels.get(&label) {
                                 Some(addr) => self.pc = *addr,
-                                None => (),
+                                None => {
+                                    self.error_state = true;
+                                    self.error_message =
+                                        "Nonexistent label, resulting from parse error".to_string();
+                                }
                             }
                         } else {
                             self.pc += 1;
                         }
                     }
-                    _ => (),
+                    _ => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::BLT => match self.get_branch_operation() {
                     Some((a, b, label)) => {
                         if a < b {
                             match self.labels.get(&label) {
                                 Some(addr) => self.pc = *addr,
-                                None => (),
+                                None => {
+                                    self.error_state = true;
+                                    self.error_message =
+                                        "Nonexistent label, resulting from parse error".to_string();
+                                }
                             }
                         } else {
                             self.pc += 1;
                         }
                     }
-                    _ => (),
+                    _ => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::BLE => match self.get_branch_operation() {
                     Some((a, b, label)) => {
                         if a <= b {
                             match self.labels.get(&label) {
                                 Some(addr) => self.pc = *addr,
-                                None => (),
+                                None => {
+                                    self.error_state = true;
+                                    self.error_message =
+                                        "Nonexistent label, resulting from parse error".to_string();
+                                }
                             }
                         } else {
                             self.pc += 1;
                         }
                     }
-                    _ => (),
+                    _ => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::BGT => match self.get_branch_operation() {
                     Some((a, b, label)) => {
                         if a > b {
                             match self.labels.get(&label) {
                                 Some(addr) => self.pc = *addr,
-                                None => (),
+                                None => {
+                                    self.error_state = true;
+                                    self.error_message =
+                                        "Nonexistent label, resulting from parse error".to_string();
+                                }
                             }
                         } else {
                             self.pc += 1;
                         }
                     }
-                    _ => (),
+                    _ => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::BGE => match self.get_branch_operation() {
                     Some((a, b, label)) => {
                         if a >= b {
                             match self.labels.get(&label) {
                                 Some(addr) => self.pc = *addr,
-                                None => (),
+                                None => {
+                                    self.error_state = true;
+                                    self.error_message =
+                                        "Nonexistent label, resulting from parse error".to_string();
+                                }
                             }
                         } else {
                             self.pc += 1;
                         }
                     }
-                    _ => (),
+                    _ => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::JUMP => match inst.args.first() {
                     Some(Argument::LABEL(label)) => match self.labels.get(label) {
                         Some(addr) => self.pc = *addr,
-                        None => (),
+                        None => {
+                            self.error_state = true;
+                            self.error_message =
+                                "Nonexistent label, resulting from parse error".to_string();
+                        }
                     },
-                    _ => (),
+                    _ => {
+                        self.error_state = true;
+                        self.error_message =
+                            "Invalid instruction format, resulting from parse error".to_string();
+                    }
                 },
                 Opcode::NOP => self.pc += 1,
-                Opcode::NONE => (),
+                Opcode::NONE => {
+                    self.error_state = true;
+                    self.error_message =
+                        "Unknown instruction, resulting from parse error".to_string();
+                }
             },
             None => {
                 self.error_state = true;
