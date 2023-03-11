@@ -2,7 +2,7 @@ use core::fmt;
 use std::vec::Vec;
 
 #[allow(dead_code)]
-#[derive(Debug, Default, PartialEq)]
+#[derive(Debug, Default, PartialEq, Clone)]
 pub enum TokenType {
     #[default]
     STRING,
@@ -21,7 +21,7 @@ impl fmt::Display for TokenType {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Token {
     token_type: TokenType,
     line_number: u32,
@@ -78,28 +78,3 @@ impl PartialEq for Token {
 }
 
 pub type TokenList = Vec<Token>;
-
-#[test]
-fn token_print() {
-    let t: Token = Token::new_token(TokenType::EQUAL, 35, "=");
-    assert_eq!(
-        format!("{}", t),
-        "Token: type(EQUAL) value (=) source line (35)"
-    );
-}
-
-#[test]
-fn token_type_print() {
-    let tt: TokenType = TokenType::ERROR;
-    assert_eq!(format!("{}", tt), "ERROR");
-}
-
-#[test]
-fn token_equality() {
-    let t: Token = Token::new_token(TokenType::EQUAL, 35, "=");
-    let t1: Token = Token::new_token(TokenType::EQUAL, 35, "=");
-    let t2: Token = Token::new_token(TokenType::SEP, 35, "=");
-
-    assert!(t == t1);
-    assert!(t != t2);
-}

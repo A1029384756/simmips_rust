@@ -1,15 +1,13 @@
-use self::token::*;
-use self::lexer::*;
-pub mod token;
-pub mod lexer;
+#![allow(dead_code)]
 
-#[test]
-fn test_mod() -> () {
-    let t: Token = Token::new_empty_token(TokenType::EQUAL, 35);
-    t.get_value();
-    println!("{}", t);
+mod lexer;
+mod parser;
+mod token;
+mod virtual_machine_interface;
+mod virtualmachine;
+mod vm_defs;
 
-    let t2: Token = Token::new_token(TokenType::ERROR, 35, "erroring");
-
-    assert!(t != t2);
-}
+mod token_tests;
+mod lexer_tests;
+mod parser_tests;
+mod virtual_machine_tests;
