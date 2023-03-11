@@ -1,10 +1,12 @@
 #[cfg(test)]
-use crate::lex_parse::{
-    lexer::tokenize,
-    parser::parse_vm,
-    virtual_machine_interface::{RegisterKind, VirtualMachineInterface},
+use {
+    crate::lex_parse::{
+        lexer::tokenize,
+        parser::parse_vm,
+        virtual_machine_interface::{RegisterKind, VirtualMachineInterface},
+    },
+    std::{fs::read_to_string, path::PathBuf},
 };
-use std::{path::PathBuf, fs::read_to_string};
 
 #[test]
 fn vm_load_instructions() {
