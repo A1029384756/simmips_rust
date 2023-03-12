@@ -1,6 +1,6 @@
 mod lex_parse;
 
-use adw::prelude::*;
+use gtk::prelude::*;
 use relm4::prelude::*;
 
 struct App {
