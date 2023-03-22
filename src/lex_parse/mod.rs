@@ -1,13 +1,13 @@
 #![allow(dead_code)]
 
-mod lexer;
-mod parser;
-mod token;
-mod virtual_machine_interface;
-mod virtualmachine;
-mod vm_defs;
+pub mod lexer;
+pub mod parser;
+pub mod token;
+pub mod virtual_machine_interface;
+pub mod virtualmachine;
+pub mod vm_defs;
 
-mod token_tests;
-mod lexer_tests;
-mod parser_tests;
-mod virtual_machine_tests;
+pub mod token_tests;
+pub mod lexer_tests;
+pub mod parser_tests;
+pub mod virtual_machine_tests;

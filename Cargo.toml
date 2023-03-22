@@ -10,3 +10,7 @@ relm4-components = "0.5.0"
 [[bin]]
 name = "simmips_gui"
 path = "src/main.rs"
+
+[[bin]]
+name = "simmips_tui"
+path = "src/tui.rs"
