@@ -190,10 +190,10 @@ impl VirtualMachineInterface for VirtualMachine {
                     Some((source, address)) => {
                         self.get_register(*source)
                             .to_le_bytes()
-                            .into_iter()
+                            .iter()
                             .enumerate()
                             .for_each(|(i, byte)| {
-                                self.data_memory[address as usize + i] = byte;
+                                self.data_memory[address as usize + i] = *byte;
                             });
                         self.pc += 1;
                     }
