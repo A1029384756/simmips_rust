@@ -3,7 +3,7 @@ use crate::lex_parse::util::get_valid_register;
 use lex_parse::virtual_machine_interface::RegisterKind;
 use lex_parse::virtual_machine_interface::VirtualMachineInterface;
 use lex_parse::virtualmachine::VirtualMachine;
-use lex_parse::{lexer::tokenize, parser::parse_vm, token::TokenType};
+use lex_parse::{lexer::tokenize, parser::parse_vm};
 use std::collections::HashMap;
 use std::env;
 use std::io::stdin;
@@ -93,15 +93,8 @@ fn main() -> ExitCode {
     }
 
     match std::fs::read_to_string(&args[1]) {
-        Ok(asm_file) => {
-            let tokens = tokenize(&asm_file);
-
-            if tokens.last().unwrap().get_type() == &TokenType::ERROR {
-                println!("{}", tokens.last().unwrap().get_value());
-                return ExitCode::FAILURE;
-            }
-
-            match parse_vm(tokens) {
+        Ok(asm_file) => match tokenize(&asm_file) {
+            Ok(tokens) => match parse_vm(tokens) {
                 Ok(vm) => {
                     let mut repl = Repl::new(vm);
                     repl.add_handler("print", handle_print);
@@ -115,21 +108,26 @@ fn main() -> ExitCode {
                         stdin().read_line(&mut event).unwrap();
 
                         if event == "quit\n" {
-                            return ExitCode::SUCCESS;
+                            break;
                         }
 
                         repl.handle_event(&event);
                     }
+                    ExitCode::SUCCESS
                 }
                 Err(error) => {
-                    println!("{}", error.message());
-                    return ExitCode::FAILURE;
+                    println!("{}", error);
+                    ExitCode::FAILURE
                 }
+            },
+            Err(error) => {
+                println!("{}", error);
+                ExitCode::FAILURE
             }
-        }
+        },
         Err(..) => {
             println!("Error: File not found");
-            return ExitCode::FAILURE;
+            ExitCode::FAILURE
         }
     }
 }

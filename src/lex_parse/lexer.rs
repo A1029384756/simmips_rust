@@ -19,7 +19,7 @@ impl Default for TokenizeState {
     }
 }
 
-pub fn tokenize(in_str: &str) -> TokenList {
+pub fn tokenize(in_str: &str) -> Result<TokenList, String> {
     let mut state: TokenizeState = TokenizeState::default();
     let mut line_iter = in_str.lines();
 
@@ -41,18 +41,13 @@ pub fn tokenize(in_str: &str) -> TokenList {
             }
             if let Some(last_token) = state.tokens.last() {
                 if last_token.get_type() == &TokenType::ERROR {
-                    return state.tokens;
+                    return Err(last_token.get_value().to_string());
                 }
             }
         }
 
         if state.paren_depth > 0 {
-            state.tokens.push(Token::new_token(
-                TokenType::ERROR,
-                state.line_num,
-                "Error: mismatched paren",
-            ));
-            return state.tokens;
+            return Err("Error: mismatched paren".to_string());
         }
 
         push_str(&mut state);
@@ -67,7 +62,7 @@ pub fn tokenize(in_str: &str) -> TokenList {
         state.line_num += 1;
     }
 
-    state.tokens
+    Ok(state.tokens)
 }
 
 fn push_str(state: &mut TokenizeState) -> () {

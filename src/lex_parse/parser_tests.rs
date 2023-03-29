@@ -5,67 +5,69 @@ use super::{lexer::tokenize, parser::parse};
 fn section_annotation() {
     {
         let input: &str = ".data\n";
-        assert!(!bool::from(parse(tokenize(input))));
+        assert!(matches!(parse(tokenize(input).unwrap()), Ok(..)));
     }
     {
         let input: &str = ".text\n";
-        assert!(!bool::from(parse(tokenize(input))));
+        assert!(matches!(parse(tokenize(input).unwrap()), Ok(..)));
     }
     {
         let input: &str = "";
-        assert!(bool::from(parse(tokenize(input))));
+        assert!(matches!(parse(tokenize(input).unwrap()), Err(..)));
     }
     {
         let input: &str = ".data\ntest=10\n.text\nlb $t2, ($t0)\n";
-        assert!(!bool::from(parse(tokenize(input))));
+        assert!(matches!(parse(tokenize(input).unwrap()), Ok(..)));
     }
 }
 
 #[test]
 fn error_message() {
     let input: &str = ".data\ntest\n";
-    assert!(parse(tokenize(input)).message().starts_with("Error:2:"));
+    assert!(parse(tokenize(input).unwrap())
+        .unwrap_err()
+        .starts_with("Error:2:"));
 }
 
 #[test]
 fn data_parse() {
     {
         let input: &str = ".data\ntest = 10\n";
-        assert!(!bool::from(parse(tokenize(input))));
+        assert!(matches!(parse(tokenize(input).unwrap()), Ok(..)));
     }
     {
         let input: &str = ".data\n7est = 10\n";
-        assert!(bool::from(parse(tokenize(input))));
+        assert!(matches!(parse(tokenize(input).unwrap()), Err(..)));
     }
     {
         let input: &str = ".data\nconst\n";
-        assert!(bool::from(parse(tokenize(input))));
+        assert!(matches!(parse(tokenize(input).unwrap()), Err(..)));
     }
     {
         let input: &str = ".data\nconst = \n";
-        assert!(bool::from(parse(tokenize(input))));
+        assert!(matches!(parse(tokenize(input).unwrap()), Err(..)));
     }
     {
         let input: &str = &String::new();
-        assert!(bool::from(parse(tokenize(input))));
+        assert!(matches!(parse(tokenize(input).unwrap()), Err(..)));
     }
     {
         let input: &str = ".data\nlabel: .space 100\n";
-        assert!(!bool::from(parse(tokenize(input))));
+        assert!(matches!(parse(tokenize(input).unwrap()), Ok(..)));
     }
     {
         let input: &str = ".data
             label: .space 100
             .word 3, 289, 5, 19
         ";
-        assert!(!bool::from(parse(tokenize(input))));
+        assert!(matches!(parse(tokenize(input).unwrap()), Ok(..)));
     }
     {
         let input: &str = ".data
             label: .space 100
             .word 42, 53 653
         ";
-        assert!(bool::from(parse(tokenize(input))));
+        assert!(matches!(parse(tokenize(input).unwrap()), Err(..)));
     }
 }
 
@@ -73,23 +75,23 @@ fn data_parse() {
 fn integer_layouts() {
     {
         let input: &str = ".data\n.word 4294967295\n";
-        assert!(!bool::from(parse(tokenize(input))));
+        assert!(matches!(parse(tokenize(input).unwrap()), Ok(..)));
     }
     {
         let input: &str = ".data\n.word 4294967296\n";
-        assert!(bool::from(parse(tokenize(input))));
+        assert!(matches!(parse(tokenize(input).unwrap()), Err(..)));
     }
     {
         let input: &str = ".data\n.word 3, 289, 5, 19\n";
-        assert!(!bool::from(parse(tokenize(input))));
+        assert!(matches!(parse(tokenize(input).unwrap()), Ok(..)));
     }
     {
         let input: &str = ".data\n.word 3, 289, 5, 19\n.word 62\n";
-        assert!(!bool::from(parse(tokenize(input))));
+        assert!(matches!(parse(tokenize(input).unwrap()), Ok(..)));
     }
     {
         let input: &str = ".data\n.space 3, 289, 5, 19\n";
-        assert!(bool::from(parse(tokenize(input))));
+        assert!(matches!(parse(tokenize(input).unwrap()), Err(..)));
     }
 }
 
@@ -97,27 +99,27 @@ fn integer_layouts() {
 fn half_layouts() {
     {
         let input = ".data\n.half 3\n";
-        assert!(!bool::from(parse(tokenize(input))));
+        assert!(matches!(parse(tokenize(input).unwrap()), Ok(..)));
     }
     {
         let input = ".data\n.half 65536\n";
-        assert!(bool::from(parse(tokenize(input))));
+        assert!(matches!(parse(tokenize(input).unwrap()), Err(..)));
     }
     {
         let input = ".data\n.half -1\n";
-        assert!(!bool::from(parse(tokenize(input))));
+        assert!(matches!(parse(tokenize(input).unwrap()), Ok(..)));
     }
     {
         let input = ".data\n.half -32789\n";
-        assert!(bool::from(parse(tokenize(input))));
+        assert!(matches!(parse(tokenize(input).unwrap()), Err(..)));
     }
     {
         let input = ".data\n.half +32768\n";
-        assert!(bool::from(parse(tokenize(input))));
+        assert!(matches!(parse(tokenize(input).unwrap()), Err(..)));
     }
     {
         let input = ".data\n.half +11\n";
-        assert!(!bool::from(parse(tokenize(input))));
+        assert!(matches!(parse(tokenize(input).unwrap()), Ok(..)));
     }
 }
 
@@ -125,27 +127,27 @@ fn half_layouts() {
 fn byte_layouts() {
     {
         let input = ".data\n.byte 3\n";
-        assert!(!bool::from(parse(tokenize(input))));
+        assert!(matches!(parse(tokenize(input).unwrap()), Ok(..)));
     }
     {
         let input = ".data\n.byte 256\n";
-        assert!(bool::from(parse(tokenize(input))));
+        assert!(matches!(parse(tokenize(input).unwrap()), Err(..)));
     }
     {
         let input = ".data\n.byte -1\n";
-        assert!(!bool::from(parse(tokenize(input))));
+        assert!(matches!(parse(tokenize(input).unwrap()), Ok(..)));
     }
     {
         let input = ".data\n.byte -129\n";
-        assert!(bool::from(parse(tokenize(input))));
+        assert!(matches!(parse(tokenize(input).unwrap()), Err(..)));
     }
     {
         let input = ".data\n.byte +128\n";
-        assert!(bool::from(parse(tokenize(input))));
+        assert!(matches!(parse(tokenize(input).unwrap()), Err(..)));
     }
     {
         let input = ".data\n.byte +11\n";
-        assert!(!bool::from(parse(tokenize(input))));
+        assert!(matches!(parse(tokenize(input).unwrap()), Ok(..)));
     }
 }
 
@@ -153,11 +155,11 @@ fn byte_layouts() {
 fn text_parse() {
     {
         let input = ".text\nlw $t2, $t0\n";
-        assert!(!bool::from(parse(tokenize(input))));
+        assert!(matches!(parse(tokenize(input).unwrap()), Ok(..)));
     }
     {
         let input = ".text\nlh $s9, $s3\n";
-        assert!(bool::from(parse(tokenize(input))));
+        assert!(matches!(parse(tokenize(input).unwrap()), Err(..)));
     }
 }
 
@@ -170,7 +172,12 @@ fn failing_parse_files() {
         let mut test_path = path.clone();
         test_path.push(format!("test0{val}.asm"));
         let data = &std::fs::read_to_string(test_path).unwrap();
-        assert!(bool::from(parse(tokenize(data))));
+        match tokenize(data) {
+            Ok(tokens) => {
+                assert!(matches!(parse(tokens), Err(..)))
+            },
+            Err(_) => (),
+        }
     });
 }
 
@@ -183,7 +190,7 @@ fn passing_parse_files() {
         let mut test_path = path.clone();
         test_path.push(format!("test0{val}.asm"));
         let data = &std::fs::read_to_string(test_path).unwrap();
-        assert!(!bool::from(parse(tokenize(data))));
+        assert!(matches!(parse(tokenize(data).unwrap()), Ok(..)));
     });
 }
 
@@ -206,7 +213,5 @@ fn interleaved_data_text() {
       .text
       .text";
 
-    let error = parse(tokenize(data));
-
-    assert!(!bool::from(error));
+    assert!(matches!(parse(tokenize(data).unwrap()), Ok(..)));
 }

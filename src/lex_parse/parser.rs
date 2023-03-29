@@ -11,52 +11,19 @@ use super::{
     vm_defs::InstructionBuilder,
 };
 
-#[derive(Debug, Default)]
-pub struct ParseError {
-    has_error: bool,
-    error_contents: String,
-}
-
-impl ParseError {
-    pub fn new() -> ParseError {
-        ParseError {
-            has_error: false,
-            error_contents: String::new(),
-        }
-    }
-
-    pub fn set(&mut self, message: &str, line: u32) -> () {
-        self.has_error = true;
-        self.error_contents = format!("Error:{}: {}", line, message.to_string());
-    }
-
-    pub fn message(&self) -> String {
-        self.error_contents.to_string()
-    }
-}
-
-impl From<ParseError> for bool {
-    fn from(parse_error: ParseError) -> bool {
-        parse_error.has_error
-    }
-}
-
-pub fn parse(tokens: TokenList) -> ParseError {
+pub fn parse(tokens: TokenList) -> Result<(), String> {
     match parse_vm(tokens) {
-        Ok(_) => ParseError::new(),
-        Err(error) => error,
+        Ok(_) => Ok(()),
+        Err(error) => Err(error),
     }
 }
 
-pub fn parse_vm(tokens: TokenList) -> Result<VirtualMachine, ParseError> {
+pub fn parse_vm(tokens: TokenList) -> Result<VirtualMachine, String> {
     let mut parser: Parser = Parser::new(&tokens);
     select_mode(&mut parser);
 
     if matches!(parser.mode, ParseMode::ERROR) {
-        parser
-            .error
-            .set("invalid section annotation", parser.get_line());
-        return Err(parser.error);
+        return Err(format!("Error:{}:section annotation", parser.get_line()));
     }
 
     while select_mode(&mut parser) {
@@ -69,17 +36,15 @@ pub fn parse_vm(tokens: TokenList) -> Result<VirtualMachine, ParseError> {
         match parser.mode {
             ParseMode::DATA => {
                 if !parse_declaration(&mut parser) {
-                    parser.error.set("invalid declaration", parser.get_line());
-                    return Err(parser.error);
+                    return Err(format!("Error:{}:invalid declaration", parser.get_line()));
                 }
             }
             ParseMode::TEXT => {
                 if !parse_instruction(&mut parser) {
-                    parser.error.set("invalid instruction", parser.get_line());
-                    return Err(parser.error);
+                    return Err(format!("Error:{}:invalid instruction", parser.get_line()));
                 }
             }
-            ParseMode::ERROR => return Err(parser.error),
+            ParseMode::ERROR => return Err(format!("Error:{}:unexpected EOF", parser.get_line())),
         };
 
         parser.advance();
@@ -381,7 +346,9 @@ fn parse_register(parser: &mut Parser) -> bool {
         | Some(RegisterKind::REGPC)
         | None => false,
         Some(reg) => {
-            parser.instruction.add_arg(Argument::REGISTER(reg.to_owned()));
+            parser
+                .instruction
+                .add_arg(Argument::REGISTER(reg.to_owned()));
             true
         }
     }
@@ -591,7 +558,6 @@ fn parse_constant(parser: &mut Parser) -> bool {
 #[derive(Debug)]
 struct Parser {
     vm: VirtualMachine,
-    error: ParseError,
     tokens: TokenList,
     pos: usize,
     labels: Vec<String>,
@@ -611,7 +577,6 @@ impl Parser {
     fn new(t: &TokenList) -> Parser {
         let mut p: Parser = Parser {
             vm: VirtualMachine::new(),
-            error: ParseError::new(),
             tokens: t.to_vec(),
             pos: 0,
             labels: Vec::new(),
