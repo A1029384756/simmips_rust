@@ -5,6 +5,7 @@ use crate::lex_parse::vm_defs::{Argument, LabelType};
 use super::{
     token::Token,
     token::{TokenList, TokenType},
+    util::get_valid_register,
     virtual_machine_interface::RegisterKind,
     virtualmachine::VirtualMachine,
     vm_defs::InstructionBuilder,
@@ -374,82 +375,15 @@ fn parse_immediate(parser: &mut Parser) -> bool {
 }
 
 fn parse_register(parser: &mut Parser) -> bool {
-    let registers: BTreeMap<&str, RegisterKind> = [
-        ("$0", RegisterKind::REG00),
-        ("$1", RegisterKind::REG01),
-        ("$2", RegisterKind::REG02),
-        ("$3", RegisterKind::REG03),
-        ("$4", RegisterKind::REG04),
-        ("$5", RegisterKind::REG05),
-        ("$6", RegisterKind::REG06),
-        ("$7", RegisterKind::REG07),
-        ("$8", RegisterKind::REG08),
-        ("$9", RegisterKind::REG09),
-        ("$10", RegisterKind::REG10),
-        ("$11", RegisterKind::REG11),
-        ("$12", RegisterKind::REG12),
-        ("$13", RegisterKind::REG13),
-        ("$14", RegisterKind::REG14),
-        ("$15", RegisterKind::REG15),
-        ("$16", RegisterKind::REG16),
-        ("$17", RegisterKind::REG17),
-        ("$18", RegisterKind::REG18),
-        ("$19", RegisterKind::REG19),
-        ("$20", RegisterKind::REG20),
-        ("$21", RegisterKind::REG21),
-        ("$22", RegisterKind::REG22),
-        ("$23", RegisterKind::REG23),
-        ("$24", RegisterKind::REG24),
-        ("$25", RegisterKind::REG25),
-        ("$26", RegisterKind::REG26),
-        ("$27", RegisterKind::REG27),
-        ("$28", RegisterKind::REG28),
-        ("$29", RegisterKind::REG29),
-        ("$30", RegisterKind::REG30),
-        ("$31", RegisterKind::REG31),
-        ("$zero", RegisterKind::REG00),
-        ("$at", RegisterKind::REG01),
-        ("$v0", RegisterKind::REG02),
-        ("$v1", RegisterKind::REG03),
-        ("$a0", RegisterKind::REG04),
-        ("$a1", RegisterKind::REG05),
-        ("$a2", RegisterKind::REG06),
-        ("$a3", RegisterKind::REG07),
-        ("$t0", RegisterKind::REG08),
-        ("$t1", RegisterKind::REG09),
-        ("$t2", RegisterKind::REG10),
-        ("$t3", RegisterKind::REG11),
-        ("$t4", RegisterKind::REG12),
-        ("$t5", RegisterKind::REG13),
-        ("$t6", RegisterKind::REG14),
-        ("$t7", RegisterKind::REG15),
-        ("$s0", RegisterKind::REG16),
-        ("$s1", RegisterKind::REG17),
-        ("$s2", RegisterKind::REG18),
-        ("$s3", RegisterKind::REG19),
-        ("$s4", RegisterKind::REG20),
-        ("$s5", RegisterKind::REG21),
-        ("$s6", RegisterKind::REG22),
-        ("$s7", RegisterKind::REG23),
-        ("$t8", RegisterKind::REG24),
-        ("$t9", RegisterKind::REG25),
-        ("$k0", RegisterKind::REG26),
-        ("$k1", RegisterKind::REG27),
-        ("$gp", RegisterKind::REG28),
-        ("$sp", RegisterKind::REG29),
-        ("$fp", RegisterKind::REG30),
-        ("$ra", RegisterKind::REG31),
-    ]
-    .into();
-
-    match registers.get(parser.peek().get_value()) {
+    match get_valid_register(parser.peek().get_value()) {
+        Some(RegisterKind::REGHI)
+        | Some(RegisterKind::REGLO)
+        | Some(RegisterKind::REGPC)
+        | None => false,
         Some(reg) => {
-            parser
-                .instruction
-                .add_arg(Argument::REGISTER(reg.to_owned()));
+            parser.instruction.add_arg(Argument::REGISTER(reg.to_owned()));
             true
         }
-        None => false,
     }
 }
 

@@ -6,6 +6,7 @@ pub mod token;
 pub mod virtual_machine_interface;
 pub mod virtualmachine;
 pub mod vm_defs;
+pub mod util;
 
 pub mod token_tests;
 pub mod lexer_tests;
