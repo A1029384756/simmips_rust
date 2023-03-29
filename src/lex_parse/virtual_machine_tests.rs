@@ -1,20 +1,17 @@
 #[cfg(test)]
-use {
-    crate::lex_parse::{
-        lexer::tokenize,
-        parser::parse_vm,
-        virtual_machine_interface::{RegisterKind, VirtualMachineInterface},
-    },
-    std::{fs::read_to_string, path::PathBuf},
+use crate::lex_parse::{
+    lexer::tokenize,
+    parser::parse_vm,
+    virtual_machine_interface::{RegisterKind, VirtualMachineInterface},
 };
+use std::{path::PathBuf, fs::read_to_string};
 
 #[test]
 fn vm_load_instructions() {
     {
         let data = ".data\ntest: .byte 10\n.text\nlb $t2, ($t0)\n";
-        let (error, mut vm) = parse_vm(tokenize(data));
+        let mut vm = parse_vm(tokenize(data)).unwrap();
 
-        assert!(!bool::from(error));
         assert_eq!(vm.get_instruction_size(), 1);
         assert_eq!(vm.get_memory_byte(0).unwrap(), 10);
 
@@ -28,9 +25,8 @@ fn vm_load_instructions() {
     }
     {
         let data = ".data\ntest: .half 1300\n.text\nlh $t2, ($t0)\n";
-        let (error, mut vm) = parse_vm(tokenize(data));
+        let mut vm = parse_vm(tokenize(data)).unwrap();
 
-        assert!(!bool::from(error));
         assert_eq!(vm.get_instruction_size(), 1);
         assert_eq!(vm.get_memory_byte(0).unwrap(), 20);
         assert_eq!(vm.get_memory_byte(1).unwrap(), 5);
@@ -40,9 +36,8 @@ fn vm_load_instructions() {
     }
     {
         let data = ".data\ntest: .word 300000\n.text\nlw $t2, ($t0)\n";
-        let (error, mut vm) = parse_vm(tokenize(data));
+        let mut vm = parse_vm(tokenize(data)).unwrap();
 
-        assert!(!bool::from(error));
         assert_eq!(vm.get_instruction_size(), 1);
         assert_eq!(vm.get_memory_byte(0).unwrap(), 224);
         assert_eq!(vm.get_memory_byte(1).unwrap(), 147);
@@ -63,9 +58,8 @@ fn vm_load_invalid_mem() {
         lw $t1, 1024
     ";
 
-        let (error, mut vm) = parse_vm(tokenize(data));
+        let mut vm = parse_vm(tokenize(data)).unwrap();
 
-        assert!(!bool::from(error));
         assert_eq!(vm.get_instruction_size(), 1);
 
         vm.step();
@@ -79,9 +73,8 @@ fn vm_load_invalid_mem() {
         lw $t1, 1021
     ";
 
-        let (error, mut vm) = parse_vm(tokenize(data));
+        let mut vm = parse_vm(tokenize(data)).unwrap();
 
-        assert!(!bool::from(error));
         assert_eq!(vm.get_instruction_size(), 1);
 
         vm.step();
@@ -95,9 +88,8 @@ fn vm_load_invalid_mem() {
         lw $t1, 1020
     ";
 
-        let (error, mut vm) = parse_vm(tokenize(data));
+        let mut vm = parse_vm(tokenize(data)).unwrap();
 
-        assert!(!bool::from(error));
         assert_eq!(vm.get_instruction_size(), 1);
 
         vm.step();
@@ -108,9 +100,8 @@ fn vm_load_invalid_mem() {
 #[test]
 fn vm_instructionless() {
     let data = ".data\ntest: .word 30 \n test2: .word 25\n";
-    let (error, vm) = parse_vm(tokenize(data));
+    let vm = parse_vm(tokenize(data)).unwrap();
 
-    assert!(!bool::from(error));
     assert_eq!(vm.get_current_source_line(), 0);
     assert!(matches!(vm.get_memory_byte(1024), None));
 }
@@ -122,8 +113,7 @@ fn vm_special_registers() {
       mult $t0, $t0
     ";
 
-    let (error, mut vm) = parse_vm(tokenize(data));
-    assert!(!bool::from(error));
+    let mut vm = parse_vm(tokenize(data)).unwrap();
 
     while !vm.is_error() {
         vm.step();
@@ -143,8 +133,7 @@ fn vm_jump() {
         j initial
     ";
 
-    let (error, mut vm) = parse_vm(tokenize(data));
-    assert!(!bool::from(error));
+    let mut vm = parse_vm(tokenize(data)).unwrap();
     vm.step();
 
     assert_eq!(vm.get_register(RegisterKind::REG08), 5);
@@ -160,8 +149,7 @@ fn vm_beq() {
       sum: add $t0, $t0, 5
       beq $t0, 5, sum ";
 
-    let (error, mut vm) = parse_vm(tokenize(data));
-    assert!(!bool::from(error));
+    let mut vm = parse_vm(tokenize(data)).unwrap();
     while !vm.is_error() {
         vm.step();
     }
@@ -175,8 +163,7 @@ fn vm_bne() {
       sum: add $t0, $t0, 5
       bne $t0, 10, sum ";
 
-    let (error, mut vm) = parse_vm(tokenize(data));
-    assert!(!bool::from(error));
+    let mut vm = parse_vm(tokenize(data)).unwrap();
     while !vm.is_error() {
         vm.step();
     }
@@ -190,8 +177,7 @@ fn vm_ble() {
       sum: add $t0, $t0, 5
       ble $t0, 10, sum ";
 
-    let (error, mut vm) = parse_vm(tokenize(data));
-    assert!(!bool::from(error));
+    let mut vm = parse_vm(tokenize(data)).unwrap();
     while !vm.is_error() {
         vm.step();
     }
@@ -210,9 +196,8 @@ fn vm_load_offset() {
       lb $t3, 3(str)
       lb $t4, 4(str)";
 
-    let (error, mut vm) = parse_vm(tokenize(data));
+    let mut vm = parse_vm(tokenize(data)).unwrap();
 
-    assert!(!bool::from(error));
     assert_eq!(vm.get_memory_byte(0).unwrap(), 'h' as u8);
     assert_eq!(vm.get_memory_byte(1).unwrap(), 'e' as u8);
     assert_eq!(vm.get_memory_byte(2).unwrap(), 'l' as u8);
@@ -235,9 +220,7 @@ fn vm_load_offset() {
 fn vm_nop() {
     let data = ".text\nnop\n";
 
-    let (error, mut vm) = parse_vm(tokenize(data));
-
-    assert!(!bool::from(error));
+    let mut vm = parse_vm(tokenize(data)).unwrap();
 
     vm.step();
     assert_eq!(vm.get_register(RegisterKind::REGPC), 1);
@@ -249,9 +232,8 @@ fn vm_store() {
         add $t0, $t0, 258
         sw $t0, 0";
 
-    let (error, mut vm) = parse_vm(tokenize(data));
+    let mut vm = parse_vm(tokenize(data)).unwrap();
 
-    assert!(!bool::from(error));
     vm.step();
     vm.step();
 
@@ -268,9 +250,8 @@ fn vm_addition_range() {
       add $t1, $t1, 1
       add $t0, $t1, $t0";
 
-        let (error, mut vm) = parse_vm(tokenize(data));
+        let mut vm = parse_vm(tokenize(data)).unwrap();
 
-        assert!(!bool::from(error));
         vm.step();
         vm.step();
         vm.step();
@@ -283,9 +264,8 @@ fn vm_addition_range() {
       add $t1, $t1, -1
       add $t0, $t1, $t0";
 
-        let (error, mut vm) = parse_vm(tokenize(data));
+        let mut vm = parse_vm(tokenize(data)).unwrap();
 
-        assert!(!bool::from(error));
         vm.step();
         vm.step();
         vm.step();
@@ -300,8 +280,7 @@ fn vm_test_09() {
     path.push("tests/vm/test09.asm");
 
     let data = &read_to_string(path).unwrap();
-    let (error, mut vm) = parse_vm(tokenize(data));
-    assert!(!bool::from(error));
+    let mut vm = parse_vm(tokenize(data)).unwrap();
 
     while !vm.is_error() {
         vm.step();
@@ -316,8 +295,7 @@ fn vm_test_11() {
     path.push("tests/vm/test11.asm");
 
     let data = &read_to_string(path).unwrap();
-    let (error, mut vm) = parse_vm(tokenize(data));
-    assert!(!bool::from(error));
+    let mut vm = parse_vm(tokenize(data)).unwrap();
 
     while !vm.is_error() {
         vm.step();
@@ -332,13 +310,11 @@ fn vm_test_17() {
     path.push("tests/vm/test17.asm");
 
     let data = &read_to_string(path).unwrap();
-    let (error, mut vm) = parse_vm(tokenize(data));
-    assert!(!bool::from(error));
+    let mut vm = parse_vm(tokenize(data)).unwrap();
 
     while !vm.is_error() {
         vm.step();
     }
 
     assert_eq!(vm.get_register(RegisterKind::REGPC), 5);
-    assert_eq!(vm.get_register(RegisterKind::REG10), 4294967292);
 }

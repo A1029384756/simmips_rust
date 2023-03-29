@@ -41,10 +41,13 @@ impl From<ParseError> for bool {
 }
 
 pub fn parse(tokens: TokenList) -> ParseError {
-    parse_vm(tokens).0
+    match parse_vm(tokens) {
+        Ok(_) => ParseError::new(),
+        Err(error) => error,
+    }
 }
 
-pub fn parse_vm(tokens: TokenList) -> (ParseError, VirtualMachine) {
+pub fn parse_vm(tokens: TokenList) -> Result<VirtualMachine, ParseError> {
     let mut parser: Parser = Parser::new(&tokens);
     select_mode(&mut parser);
 
@@ -52,7 +55,7 @@ pub fn parse_vm(tokens: TokenList) -> (ParseError, VirtualMachine) {
         parser
             .error
             .set("invalid section annotation", parser.get_line());
-        return (parser.error, parser.vm);
+        return Err(parser.error);
     }
 
     while select_mode(&mut parser) {
@@ -66,22 +69,22 @@ pub fn parse_vm(tokens: TokenList) -> (ParseError, VirtualMachine) {
             ParseMode::DATA => {
                 if !parse_declaration(&mut parser) {
                     parser.error.set("invalid declaration", parser.get_line());
-                    return (parser.error, parser.vm);
+                    return Err(parser.error);
                 }
             }
             ParseMode::TEXT => {
                 if !parse_instruction(&mut parser) {
                     parser.error.set("invalid instruction", parser.get_line());
-                    return (parser.error, parser.vm);
+                    return Err(parser.error);
                 }
             }
-            ParseMode::ERROR => return (parser.error, parser.vm),
+            ParseMode::ERROR => return Err(parser.error),
         };
 
         parser.advance();
     }
 
-    (parser.error, parser.vm)
+    Ok(parser.vm)
 }
 
 fn parse_declaration(parser: &mut Parser) -> bool {
