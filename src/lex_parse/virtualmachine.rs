@@ -1,5 +1,6 @@
 use super::virtual_machine_interface::{RegisterKind, VirtualMachineInterface};
 use super::vm_defs::{Argument, Instruction, LabelType, Labels, Opcode};
+use std::num::Wrapping;
 
 #[derive(Debug)]
 pub struct VirtualMachine {
@@ -255,7 +256,9 @@ impl VirtualMachineInterface for VirtualMachine {
                 },
                 Opcode::ADDU => match self.get_unsigned_instruction() {
                     Some((dest, a, b)) => {
-                        self.registers[*dest as usize] = ((a as u64) + (b as u64)) as u32;
+                        let a = Wrapping(a as u64);
+                        let b = Wrapping(b as u64);
+                        self.registers[*dest as usize] = (a + b).0 as u32;
                         self.pc += 1;
                     }
                     None => {
@@ -286,7 +289,9 @@ impl VirtualMachineInterface for VirtualMachine {
                 },
                 Opcode::SUBU => match self.get_unsigned_instruction() {
                     Some((dest, a, b)) => {
-                        self.registers[*dest as usize] = ((a as u64) - (b as u64)) as u32;
+                        let a = Wrapping(a as u64);
+                        let b = Wrapping(b as u64);
+                        self.registers[*dest as usize] = (a - b).0 as u32;
                         self.pc += 1;
                     }
                     None => {
