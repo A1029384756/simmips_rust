@@ -44,12 +44,12 @@ impl Repl {
 
 fn get_valid_address(addr: &str) -> Option<u32> {
     match addr.chars().next() {
-        Some('&') => match &addr[1..=2] {
-            "0x" => match u32::from_str_radix(&addr[3..], 16) {
+        Some('&') => match addr.starts_with("&0x") {
+            true => match u32::from_str_radix(&addr[3..], 16) {
                 Ok(val) => Some(val),
                 Err(_) => None,
             },
-            _ => match u32::from_str_radix(&addr[1..], 10) {
+            false => match u32::from_str_radix(&addr[1..], 10) {
                 Ok(val) => Some(val),
                 Err(_) => None,
             },
