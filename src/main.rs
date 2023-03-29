@@ -21,7 +21,7 @@ impl SimpleComponent for App {
 
     view! {
         gtk::Window {
-            set_title: Some("Simple app"),
+            set_title: Some("MIPS Simulator"),
             set_default_size: (300, 100),
 
             gtk::Box {
@@ -75,6 +75,6 @@ impl SimpleComponent for App {
 }
 
 fn main() {
-    let app = RelmApp::new("relm4.example.simple");
+    let app = RelmApp::new("org.simmips.gui");
     app.run::<App>(0);
 }
