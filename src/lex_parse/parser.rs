@@ -281,7 +281,6 @@ fn parse_label_reference(parser: &mut Parser) -> bool {
 }
 
 fn parse_data_movement(parser: &mut Parser) -> bool {
-    parser.instruction.set_line(parser.get_line());
     parser
         .instruction
         .set_opcode(&parser.peek().get_value().to_string());

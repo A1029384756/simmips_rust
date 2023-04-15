@@ -1,16 +1,16 @@
 use crate::lex_parse::token::*;
 use std::str::Chars;
 
-struct TokenizeState {
+struct Tokenizer {
     line_num: u32,
     token_val: String,
     paren_depth: i32,
     tokens: TokenList,
 }
 
-impl Default for TokenizeState {
+impl Default for Tokenizer {
     fn default() -> Self {
-        TokenizeState {
+        Tokenizer {
             line_num: 1,
             token_val: String::default(),
             paren_depth: 0,
@@ -20,7 +20,7 @@ impl Default for TokenizeState {
 }
 
 pub fn tokenize(in_str: &str) -> Result<TokenList, String> {
-    let mut state: TokenizeState = TokenizeState::default();
+    let mut tokenizer: Tokenizer = Tokenizer::default();
     let mut line_iter = in_str.lines();
 
     while let Some(line) = line_iter.next() {
@@ -29,43 +29,43 @@ pub fn tokenize(in_str: &str) -> Result<TokenList, String> {
         while let Some(char) = char_iter.next() {
             match char {
                 '#' => break,
-                '"' => handle_string_delim(&mut state, &mut char_iter),
-                '(' => handle_open_paren(&mut state),
-                ')' => handle_close_paren(&mut state),
-                '=' => handle_eq(&mut state),
-                ',' => handle_sep(&mut state),
+                '"' => handle_string_delim(&mut tokenizer, &mut char_iter),
+                '(' => handle_open_paren(&mut tokenizer),
+                ')' => handle_close_paren(&mut tokenizer),
+                '=' => handle_eq(&mut tokenizer),
+                ',' => handle_sep(&mut tokenizer),
                 char if char.is_whitespace() => {
-                    push_str(&mut state);
+                    push_str(&mut tokenizer);
                 }
-                _ => state.token_val.push(char),
+                _ => tokenizer.token_val.push(char),
             }
-            if let Some(last_token) = state.tokens.last() {
+            if let Some(last_token) = tokenizer.tokens.last() {
                 if last_token.get_type() == &TokenType::ERROR {
                     return Err(last_token.get_value().to_string());
                 }
             }
         }
 
-        if state.paren_depth > 0 {
+        if tokenizer.paren_depth > 0 {
             return Err("Error: mismatched paren".to_string());
         }
 
-        push_str(&mut state);
-        if let Some(last_token) = state.tokens.last() {
+        push_str(&mut tokenizer);
+        if let Some(last_token) = tokenizer.tokens.last() {
             if last_token.get_type() != &TokenType::EOL {
-                state
+                tokenizer
                     .tokens
-                    .push(Token::new_empty_token(TokenType::EOL, state.line_num));
+                    .push(Token::new_empty_token(TokenType::EOL, tokenizer.line_num));
             }
         }
 
-        state.line_num += 1;
+        tokenizer.line_num += 1;
     }
 
-    Ok(state.tokens)
+    Ok(tokenizer.tokens)
 }
 
-fn push_str(state: &mut TokenizeState) -> () {
+fn push_str(state: &mut Tokenizer) -> () {
     if !state.token_val.is_empty() {
         state.tokens.push(Token::new_token(
             TokenType::STRING,
@@ -76,7 +76,7 @@ fn push_str(state: &mut TokenizeState) -> () {
     }
 }
 
-fn handle_string_delim(state: &mut TokenizeState, char_iter: &mut Chars) -> () {
+fn handle_string_delim(state: &mut Tokenizer, char_iter: &mut Chars) -> () {
     push_str(state);
     state.tokens.push(Token::new_empty_token(
         TokenType::STRINGDELIM,
@@ -113,7 +113,7 @@ fn handle_string_delim(state: &mut TokenizeState, char_iter: &mut Chars) -> () {
     }
 }
 
-fn handle_open_paren(state: &mut TokenizeState) -> () {
+fn handle_open_paren(state: &mut Tokenizer) -> () {
     push_str(state);
     state
         .tokens
@@ -121,7 +121,7 @@ fn handle_open_paren(state: &mut TokenizeState) -> () {
     state.paren_depth += 1;
 }
 
-fn handle_close_paren(state: &mut TokenizeState) -> () {
+fn handle_close_paren(state: &mut Tokenizer) -> () {
     state.paren_depth -= 1;
 
     if state.paren_depth < 0 {
@@ -140,14 +140,14 @@ fn handle_close_paren(state: &mut TokenizeState) -> () {
     ));
 }
 
-fn handle_eq(state: &mut TokenizeState) -> () {
+fn handle_eq(state: &mut Tokenizer) -> () {
     push_str(state);
     state
         .tokens
         .push(Token::new_empty_token(TokenType::EQUAL, state.line_num));
 }
 
-fn handle_sep(state: &mut TokenizeState) -> () {
+fn handle_sep(state: &mut Tokenizer) -> () {
     push_str(state);
     state
         .tokens
