@@ -1,7 +1,7 @@
-mod lex_parse;
-mod utils;
 mod column_views;
 mod grid_cell;
+mod lex_parse;
+mod utils;
 
 use std::path::PathBuf;
 
