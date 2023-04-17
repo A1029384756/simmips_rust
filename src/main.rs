@@ -118,9 +118,15 @@ impl SimpleComponent for App {
                                     self.vm.get_current_source_line(),
                                 );
                             }
-                            Err(e) => sender.input(Msg::ShowMessage(e)),
+                            Err(e) => {
+                                sender.input(Msg::ShowMessage(e));
+                                self.vm = VirtualMachine::new();
+                            }
                         },
-                        Err(e) => sender.input(Msg::ShowMessage(e)),
+                        Err(e) => {
+                            sender.input(Msg::ShowMessage(e));
+                            self.vm = VirtualMachine::new();
+                        }
                     }
                 }
                 Err(e) => sender.input(Msg::ShowMessage(e.to_string())),
