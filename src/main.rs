@@ -2,8 +2,10 @@ mod column_views;
 mod lex_parse;
 mod utils;
 
+use std::convert::identity;
 use std::path::PathBuf;
 
+use column_views::register_view::RegisterView;
 use gtk::prelude::*;
 use lex_parse::lexer::tokenize;
 use lex_parse::parser::parse_vm;
@@ -14,14 +16,15 @@ use relm4_components::open_dialog::*;
 use utils::highlight_line;
 
 struct App {
-    open_dialog: relm4::Controller<OpenDialog>,
+    open_dialog: Controller<OpenDialog>,
     vm: VirtualMachine,
     asm_view_buffer: gtk::TextBuffer,
+    register_view: Controller<RegisterView>,
     message: Option<String>,
 }
 
 #[derive(Debug)]
-enum Msg {
+pub enum Msg {
     OpenRequest,
     OpenResponse(PathBuf),
     Ignore,
@@ -35,7 +38,7 @@ enum Msg {
 impl SimpleComponent for App {
     type Input = Msg;
     type Output = ();
-    type Init = u8;
+    type Init = ();
 
     fn post_view() {
         if let Some(text) = &model.message {
@@ -65,6 +68,10 @@ impl SimpleComponent for App {
                 OpenDialogResponse::Cancel => Msg::Ignore,
             });
 
+        let register_view: Controller<RegisterView> = RegisterView::builder()
+            .launch(())
+            .forward(sender.input_sender(), identity);
+
         let highlight_tag = gtk::TextTag::new(Some("line_highlight"));
         highlight_tag.set_paragraph_background(Some("yellow"));
         highlight_tag.set_foreground(Some("black"));
@@ -76,6 +83,7 @@ impl SimpleComponent for App {
             open_dialog,
             vm: VirtualMachine::new(),
             asm_view_buffer: gtk::TextBuffer::new(Some(&tag_table)),
+            register_view,
             message: None,
         };
 
@@ -172,21 +180,7 @@ impl SimpleComponent for App {
                         },
                     },
 
-                    gtk::ColumnView {
-                        set_hexpand: true,
-                        set_vexpand: true,
-                        set_margin_all: 5,
-                        set_show_row_separators: true,
-                        set_show_column_separators: true,
-                    },
-
-                    gtk::ColumnView {
-                        set_hexpand: true,
-                        set_vexpand: true,
-                        set_margin_all: 5,
-                        set_show_row_separators: true,
-                        set_show_column_separators: true,
-                    },
+                    append: model.register_view.widget()
                 },
 
                 gtk::Box {
@@ -225,5 +219,5 @@ impl SimpleComponent for App {
 
 fn main() {
     let app = RelmApp::new("org.simmips.gui");
-    app.run::<App>(0);
+    app.run::<App>(());
 }
