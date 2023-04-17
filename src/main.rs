@@ -5,12 +5,14 @@ mod utils;
 use std::convert::identity;
 use std::path::PathBuf;
 
-use column_views::register_view::RegisterView;
+use column_views::memory_view::{MemoryView, MemoryViewMsg};
+use column_views::register_view::{RegViewMsg, RegisterView};
 use gtk::prelude::*;
 use lex_parse::lexer::tokenize;
 use lex_parse::parser::parse_vm;
 use lex_parse::virtual_machine_interface::VirtualMachineInterface;
 use lex_parse::virtualmachine::VirtualMachine;
+use num_traits::FromPrimitive;
 use relm4::prelude::*;
 use relm4_components::open_dialog::*;
 use utils::highlight_line;
@@ -20,6 +22,7 @@ struct App {
     vm: VirtualMachine,
     asm_view_buffer: gtk::TextBuffer,
     register_view: Controller<RegisterView>,
+    memory_view: Controller<MemoryView>,
     message: Option<String>,
 }
 
@@ -30,6 +33,7 @@ pub enum Msg {
     Ignore,
     Step,
     Run,
+    ResetSimulation,
     ShowMessage(String),
     ResetMessage,
 }
@@ -72,6 +76,10 @@ impl SimpleComponent for App {
             .launch(())
             .forward(sender.input_sender(), identity);
 
+        let memory_view: Controller<MemoryView> = MemoryView::builder()
+            .launch(())
+            .forward(sender.input_sender(), identity);
+
         let highlight_tag = gtk::TextTag::new(Some("line_highlight"));
         highlight_tag.set_paragraph_background(Some("yellow"));
         highlight_tag.set_foreground(Some("black"));
@@ -84,6 +92,7 @@ impl SimpleComponent for App {
             vm: VirtualMachine::new(),
             asm_view_buffer: gtk::TextBuffer::new(Some(&tag_table)),
             register_view,
+            memory_view,
             message: None,
         };
 
@@ -103,6 +112,7 @@ impl SimpleComponent for App {
                         Ok(tokens) => match parse_vm(tokens) {
                             Ok(vm) => {
                                 self.vm = vm;
+                                update_registers_and_mem(self);
                                 highlight_line(
                                     &mut self.asm_view_buffer,
                                     self.vm.get_current_source_line(),
@@ -117,6 +127,7 @@ impl SimpleComponent for App {
             },
             Msg::Step => {
                 self.vm.step();
+                update_registers_and_mem(self);
                 highlight_line(&mut self.asm_view_buffer, self.vm.get_current_source_line());
                 if self.vm.is_error() {
                     sender.input(Msg::ShowMessage(self.vm.get_error()));
@@ -138,6 +149,7 @@ impl SimpleComponent for App {
                     ));
                 }
 
+                update_registers_and_mem(self);
                 highlight_line(&mut self.asm_view_buffer, self.vm.get_current_source_line());
             }
             Msg::ShowMessage(message) => {
@@ -145,6 +157,31 @@ impl SimpleComponent for App {
             }
             Msg::ResetMessage => {
                 self.message = None;
+            }
+            Msg::ResetSimulation => {
+                let contents = self
+                    .asm_view_buffer
+                    .text(
+                        &self.asm_view_buffer.start_iter(),
+                        &self.asm_view_buffer.end_iter(),
+                        true,
+                    )
+                    .to_string();
+
+                match tokenize(&contents) {
+                    Ok(tokens) => match parse_vm(tokens) {
+                        Ok(vm) => {
+                            self.vm = vm;
+                            update_registers_and_mem(self);
+                            highlight_line(
+                                &mut self.asm_view_buffer,
+                                self.vm.get_current_source_line(),
+                            );
+                        }
+                        Err(e) => sender.input(Msg::ShowMessage(e)),
+                    },
+                    Err(e) => sender.input(Msg::ShowMessage(e)),
+                }
             }
             Msg::Ignore => {}
         }
@@ -180,7 +217,8 @@ impl SimpleComponent for App {
                         },
                     },
 
-                    append: model.register_view.widget()
+                    append: model.register_view.widget(),
+                    append: model.memory_view.widget(),
                 },
 
                 gtk::Box {
@@ -204,6 +242,11 @@ impl SimpleComponent for App {
                         connect_clicked => Msg::Run,
                     },
 
+                    gtk::Button {
+                        set_label: "Reset",
+                        connect_clicked => Msg::ResetSimulation,
+                    },
+
                     gtk::Label {
                         #[watch]
                         set_label: &format!("Current Line: {}", model.vm.get_current_source_line()),
@@ -215,6 +258,19 @@ impl SimpleComponent for App {
             }
         }
     }
+}
+
+fn update_registers_and_mem(app: &mut App) {
+    app.register_view.emit(RegViewMsg::UpdateRegisters(
+        (0..35)
+            .map(|idx| app.vm.get_register(FromPrimitive::from_i32(idx).unwrap()))
+            .collect(),
+    ));
+    app.memory_view.emit(MemoryViewMsg::UpdateMemory(
+        (0..app.vm.get_memory_size())
+            .map(|idx| app.vm.get_memory_byte(idx).unwrap())
+            .collect(),
+    ));
 }
 
 fn main() {

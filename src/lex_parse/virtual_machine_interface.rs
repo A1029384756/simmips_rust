@@ -1,4 +1,6 @@
-#[derive(Debug, Clone, Copy)]
+use num_derive::FromPrimitive;
+
+#[derive(Debug, Clone, Copy, FromPrimitive)]
 pub enum RegisterKind {
     REG00 = 0,
     REG01 = 1,
