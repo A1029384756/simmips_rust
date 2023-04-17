@@ -1,7 +1,7 @@
 mod imp;
-use relm4::prelude::*;
 use gtk::glib;
 use gtk::subclass::prelude::*;
+use relm4::prelude::*;
 
 glib::wrapper! {
     pub struct GridCell(ObjectSubclass<imp::GridCell>)
@@ -20,10 +20,10 @@ pub struct Entry {
 
 impl GridCell {
     pub fn new() -> Self {
-        glib::Object::new(&[])
+        glib::Object::new()
     }
 
     pub fn set_entry(&self, entry: &Entry) {
-        self.imp().name.set_text(&entry.name);
+        self.imp().name.set_text(Some(&entry.name));
     }
 }
