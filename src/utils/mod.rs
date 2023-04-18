@@ -1,8 +1,7 @@
-use relm4::gtk::traits::TextBufferExt;
+use relm4::prelude::*;
+use gtk::traits::TextBufferExt;
 
-use super::gtk::*;
-
-pub fn highlight_line(text_buffer: &mut TextBuffer, line: u32) {
+pub fn highlight_line(text_buffer: &mut gtk::TextBuffer, line: u32) {
     let line_zero_indexed: i32 = line as i32 - 1;
     text_buffer.remove_all_tags(&text_buffer.start_iter(), &text_buffer.end_iter());
 

@@ -91,12 +91,14 @@ impl Component for App {
             .launch(())
             .forward(sender.input_sender(), identity);
 
-        let highlight_tag = gtk::TextTag::new(Some("line_highlight"));
-        highlight_tag.set_paragraph_background(Some("yellow"));
-        highlight_tag.set_foreground(Some("black"));
-
         let tag_table = gtk::TextTagTable::new();
-        tag_table.add(&highlight_tag);
+        tag_table.add(
+            &gtk::TextTag::builder()
+                .name("line_highlight")
+                .paragraph_background("yellow")
+                .foreground("black")
+                .build(),
+        );
 
         let model = App {
             open_dialog,
