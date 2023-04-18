@@ -4,6 +4,8 @@ mod utils;
 
 use std::convert::identity;
 use std::path::PathBuf;
+use std::sync::mpsc;
+use std::sync::mpsc::Sender;
 
 use column_views::memory_view::{MemoryView, MemoryViewMsg};
 use column_views::register_view::{RegViewMsg, RegisterView};
@@ -24,6 +26,8 @@ struct App {
     register_view: Controller<RegisterView>,
     memory_view: Controller<MemoryView>,
     message: Option<String>,
+    app_to_thread: Option<Sender<()>>,
+    vm_running: bool,
 }
 
 #[derive(Debug)]
@@ -33,14 +37,21 @@ pub enum Msg {
     Ignore,
     Step,
     Run,
+    Break,
     ResetSimulation,
     ShowMessage(String),
     ResetMessage,
 }
 
+#[derive(Debug)]
+enum CommandMsg {
+    ThreadFinished(VirtualMachine),
+}
+
 #[relm4::component]
-impl SimpleComponent for App {
+impl Component for App {
     type Input = Msg;
+    type CommandOutput = CommandMsg;
     type Output = ();
     type Init = ();
 
@@ -94,6 +105,8 @@ impl SimpleComponent for App {
             register_view,
             memory_view,
             message: None,
+            app_to_thread: None,
+            vm_running: false,
         };
 
         let widgets = view_output!();
@@ -101,7 +114,7 @@ impl SimpleComponent for App {
         ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, msg: Self::Input, sender: ComponentSender<Self>) {
+    fn update(&mut self, msg: Msg, sender: ComponentSender<Self>, _root: &Self::Root) {
         match msg {
             Msg::OpenRequest => self.open_dialog.emit(OpenDialogMsg::Open),
             Msg::OpenResponse(path) => match std::fs::read_to_string(&path) {
@@ -140,24 +153,29 @@ impl SimpleComponent for App {
                 }
             }
             Msg::Run => {
-                for _ in 0..10000 {
-                    if self.vm.is_error() {
-                        break;
-                    };
-                    self.vm.step();
-                }
+                let (app_tx, thread_rx) = mpsc::channel::<()>();
+                self.vm_running = true;
 
-                if self.vm.is_error() {
-                    sender.input(Msg::ShowMessage(self.vm.get_error()));
-                } else {
-                    sender.input(Msg::ShowMessage(
-                        "Ran 10000 iterations without error".to_string(),
-                    ));
-                }
-
-                update_registers_and_mem(self);
-                highlight_line(&mut self.asm_view_buffer, self.vm.get_current_source_line());
+                self.app_to_thread = Some(app_tx);
+                let mut thread_vm = self.vm.clone();
+                sender.oneshot_command(async move {
+                    while !thread_vm.is_error() {
+                        thread_vm.step();
+                        match thread_rx.try_recv() {
+                            Ok(_) => break,
+                            Err(_) => {}
+                        }
+                    }
+                    CommandMsg::ThreadFinished(thread_vm)
+                });
             }
+            Msg::Break => match &self.app_to_thread {
+                Some(tx) => match tx.send(()) {
+                    Ok(_) => {}
+                    Err(_) => {}
+                },
+                None => {}
+            },
             Msg::ShowMessage(message) => {
                 self.message = Some(message);
             }
@@ -190,6 +208,25 @@ impl SimpleComponent for App {
                 }
             }
             Msg::Ignore => {}
+        }
+    }
+
+    fn update_cmd(
+        &mut self,
+        message: Self::CommandOutput,
+        sender: ComponentSender<Self>,
+        _: &Self::Root,
+    ) {
+        match message {
+            CommandMsg::ThreadFinished(new_vm) => {
+                self.vm_running = false;
+                self.vm = new_vm;
+                update_registers_and_mem(self);
+                highlight_line(&mut self.asm_view_buffer, self.vm.get_current_source_line());
+                if self.vm.is_error() {
+                    sender.input(Msg::ShowMessage(self.vm.get_error()));
+                }
+            }
         }
     }
 
@@ -235,21 +272,34 @@ impl SimpleComponent for App {
 
                     gtk::Button {
                         set_label: "Load File",
+                        #[watch]
+                        set_sensitive: !model.vm_running,
                         connect_clicked => Msg::OpenRequest,
                     },
 
                     gtk::Button {
                         set_label: "Step",
+                        #[watch]
+                        set_sensitive: !model.vm_running,
                         connect_clicked => Msg::Step,
                     },
 
                     gtk::Button {
                         set_label: "Run",
+                        #[watch]
+                        set_sensitive: !model.vm_running,
                         connect_clicked => Msg::Run,
                     },
 
                     gtk::Button {
+                        set_label: "Break",
+                        connect_clicked => Msg::Break,
+                    },
+
+                    gtk::Button {
                         set_label: "Reset",
+                        #[watch]
+                        set_sensitive: !model.vm_running,
                         connect_clicked => Msg::ResetSimulation,
                     },
 

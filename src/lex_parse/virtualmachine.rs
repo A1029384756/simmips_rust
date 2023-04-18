@@ -2,7 +2,7 @@ use super::virtual_machine_interface::{RegisterKind, VirtualMachineInterface};
 use super::vm_defs::{Argument, Instruction, LabelType, Labels, Opcode};
 use std::num::Wrapping;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct VirtualMachine {
     error_state: bool,
     error_message: String,
