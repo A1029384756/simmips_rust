@@ -295,6 +295,8 @@ impl Component for App {
 
                     gtk::Button {
                         set_label: "Break",
+                        #[watch]
+                        set_sensitive: model.vm_running,
                         connect_clicked => Msg::Break,
                     },
 
