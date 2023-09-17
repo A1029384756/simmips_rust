@@ -1,4 +1,5 @@
 use std::cell::Ref;
+use relm4::gtk::prelude::ListItemExt;
 
 use gtk::gio::ListStore;
 use gtk::glib::prelude::*;
@@ -32,7 +33,7 @@ impl SimpleComponent for MemoryView {
         root: &Self::Root,
         _sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-        let register_store = ListStore::new(BoxedAnyObject::static_type());
+        let register_store = ListStore::new::<BoxedAnyObject>();
 
         let sel = gtk::SingleSelection::new(Some(register_store));
 
@@ -94,7 +95,7 @@ impl SimpleComponent for MemoryView {
     fn update(&mut self, msg: Self::Input, _: ComponentSender<Self>) {
         match msg {
             MemoryViewMsg::UpdateMemory(new_contents) => {
-                let register_store = ListStore::new(BoxedAnyObject::static_type());
+                let register_store = ListStore::new::<BoxedAnyObject>();
                 new_contents.iter().enumerate().for_each(|(idx, val)| {
                     register_store.append(&BoxedAnyObject::new(Row {
                         mem_addr: format!("0x{:08x}", idx),

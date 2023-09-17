@@ -1,4 +1,5 @@
 use std::cell::Ref;
+use relm4::gtk::prelude::ListItemExt;
 
 use gtk::gio::ListStore;
 use gtk::glib::prelude::*;
@@ -45,7 +46,7 @@ impl SimpleComponent for RegisterView {
         root: &Self::Root,
         _sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-        let register_store = ListStore::new(BoxedAnyObject::static_type());
+        let register_store = ListStore::new::<BoxedAnyObject>();
 
         (0..35).for_each(|idx| {
             register_store.append(&BoxedAnyObject::new(Row {
@@ -138,7 +139,7 @@ impl SimpleComponent for RegisterView {
     fn update(&mut self, msg: Self::Input, _: ComponentSender<Self>) {
         match msg {
             RegViewMsg::UpdateRegisters(new_contents) => {
-                let register_store = ListStore::new(BoxedAnyObject::static_type());
+                let register_store = ListStore::new::<BoxedAnyObject>();
 
                 let mut back = new_contents[..32].to_owned();
                 let mut front = new_contents[32..].to_owned();

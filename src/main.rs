@@ -50,8 +50,8 @@ enum CommandMsg {
 
 #[relm4::component]
 impl Component for App {
-    type Input = Msg;
     type CommandOutput = CommandMsg;
+    type Input = Msg;
     type Output = ();
     type Init = ();
 
