@@ -235,19 +235,16 @@ impl VirtualMachineInterface for VirtualMachine {
                     }
                 },
                 Opcode::Add => match self.get_signed_instruction() {
-                    Some((dest, a, b)) => {
-                        match i32::try_from((a as i64) + (b as i64)) {
-                            Ok(result) => {
-                                self.registers[*dest as usize] = result as u32;
-                                self.pc += 1;
-                            }
-                            Err(..) => {
-                                self.error_state = true;
-                                self.error_message =
-                                    "Integer overflow performing addition".to_string();
-                            }
+                    Some((dest, a, b)) => match i32::try_from((a as i64) + (b as i64)) {
+                        Ok(result) => {
+                            self.registers[*dest as usize] = result as u32;
+                            self.pc += 1;
                         }
-                    }
+                        Err(..) => {
+                            self.error_state = true;
+                            self.error_message = "Integer overflow performing addition".to_string();
+                        }
+                    },
                     None => {
                         self.error_state = true;
                         self.error_message =
@@ -268,19 +265,17 @@ impl VirtualMachineInterface for VirtualMachine {
                     }
                 },
                 Opcode::Sub => match self.get_signed_instruction() {
-                    Some((dest, a, b)) => {
-                        match i32::try_from(a as i64 - b as i64) {
-                            Ok(result) => {
-                                self.registers[*dest as usize] = result as u32;
-                                self.pc += 1;
-                            }
-                            Err(..) => {
-                                self.error_state = true;
-                                self.error_message =
-                                    "Integer overflow performing subtraction".to_string();
-                            }
+                    Some((dest, a, b)) => match i32::try_from(a as i64 - b as i64) {
+                        Ok(result) => {
+                            self.registers[*dest as usize] = result as u32;
+                            self.pc += 1;
                         }
-                    }
+                        Err(..) => {
+                            self.error_state = true;
+                            self.error_message =
+                                "Integer overflow performing subtraction".to_string();
+                        }
+                    },
                     None => {
                         self.error_state = true;
                         self.error_message =
@@ -315,19 +310,17 @@ impl VirtualMachineInterface for VirtualMachine {
                     }
                 },
                 Opcode::Mulo => match self.get_signed_instruction() {
-                    Some((dest, a, b)) => {
-                        match i32::try_from(a as i64 * b as i64) {
-                            Ok(result) => {
-                                self.registers[*dest as usize] = result as u32;
-                                self.pc += 1;
-                            }
-                            Err(..) => {
-                                self.error_state = true;
-                                self.error_message =
-                                    "Integer overflow performing multiplication".to_string();
-                            }
+                    Some((dest, a, b)) => match i32::try_from(a as i64 * b as i64) {
+                        Ok(result) => {
+                            self.registers[*dest as usize] = result as u32;
+                            self.pc += 1;
                         }
-                    }
+                        Err(..) => {
+                            self.error_state = true;
+                            self.error_message =
+                                "Integer overflow performing multiplication".to_string();
+                        }
+                    },
                     None => {
                         self.error_state = true;
                         self.error_message =

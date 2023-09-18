@@ -581,9 +581,9 @@ impl Parser {
             }
 
             if let (Some('A'..='z'), Some(':')) = (
-                            token.get_value().chars().next(),
-                            token.get_value().chars().last(),
-                        ) {
+                token.get_value().chars().next(),
+                token.get_value().chars().last(),
+            ) {
                 if token.get_value()[0..token.get_value().len() - 1]
                     .chars()
                     .all(char::is_alphanumeric)

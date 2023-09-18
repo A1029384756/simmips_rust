@@ -1,5 +1,5 @@
-use relm4::prelude::*;
 use gtk::traits::TextBufferExt;
+use relm4::prelude::*;
 
 pub fn highlight_line(text_buffer: &mut gtk::TextBuffer, line: u32) {
     let line_zero_indexed: i32 = line as i32 - 1;

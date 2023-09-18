@@ -1,5 +1,5 @@
-use std::cell::Ref;
 use relm4::gtk::prelude::ListItemExt;
+use std::cell::Ref;
 
 use gtk::gio::ListStore;
 use gtk::glib::prelude::*;
@@ -19,7 +19,7 @@ pub struct MemoryView {
 
 #[derive(Debug)]
 pub enum MemoryViewMsg {
-    UpdateMemory (Vec<u8>),
+    UpdateMemory(Vec<u8>),
 }
 
 #[relm4::component(pub)]

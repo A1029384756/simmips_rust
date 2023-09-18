@@ -1,5 +1,8 @@
 #[cfg(test)]
-use crate::lex_parse::{token::{TokenList, TokenType}, lexer::tokenize};
+use crate::lex_parse::{
+    lexer::tokenize,
+    token::{TokenList, TokenType},
+};
 
 #[test]
 fn tokenize_test() {
