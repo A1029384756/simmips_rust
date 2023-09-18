@@ -1,5 +1,5 @@
-use std::cell::Ref;
 use relm4::gtk::prelude::ListItemExt;
+use std::cell::Ref;
 
 use gtk::gio::ListStore;
 use gtk::glib::prelude::*;
@@ -146,7 +146,7 @@ impl SimpleComponent for RegisterView {
 
                 front.reverse();
                 front.append(&mut back);
-                
+
                 front.iter().enumerate().for_each(|(idx, val)| {
                     register_store.append(&BoxedAnyObject::new(Row {
                         reg_num: format!("{}", REG_NUMBERS[idx]),

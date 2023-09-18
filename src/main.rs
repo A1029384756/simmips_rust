@@ -312,9 +312,7 @@ impl Component for App {
                         set_label: &format!("Current Line: {}", model.vm.get_current_source_line()),
                         set_margin_all: 5,
                     },
-
                 }
-
             }
         }
     }
