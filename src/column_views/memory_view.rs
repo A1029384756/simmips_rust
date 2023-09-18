@@ -1,28 +1,18 @@
-use relm4::gtk::traits::WidgetExt;
-use relm4::prelude::*;
+use relm4::{gtk::traits::WidgetExt, prelude::*};
 use relm4::{
     typed_view::column::{LabelColumn, TypedColumnView},
     ComponentParts, ComponentSender, SimpleComponent,
 };
 
-pub struct RowItem {
+pub struct MemoryRow {
     addr: u32,
     value: u8,
-}
-
-impl RowItem {
-    fn new(addr: u32, value: u8) -> Self {
-        Self {
-            addr,
-            value,
-        }
-    }
 }
 
 pub struct AddressColumn;
 
 impl LabelColumn for AddressColumn {
-    type Item = RowItem;
+    type Item = MemoryRow;
 
     type Value = u32;
 
@@ -42,7 +32,7 @@ impl LabelColumn for AddressColumn {
 pub struct MemoryColumn;
 
 impl LabelColumn for MemoryColumn {
-    type Item = RowItem;
+    type Item = MemoryRow;
 
     type Value = u8;
 
@@ -60,7 +50,7 @@ impl LabelColumn for MemoryColumn {
 }
 
 pub struct MemoryView {
-    view_wrapper: TypedColumnView<RowItem, gtk::SingleSelection>,
+    view_wrapper: TypedColumnView<MemoryRow, gtk::NoSelection>,
 }
 
 #[derive(Debug)]
@@ -79,7 +69,7 @@ impl SimpleComponent for MemoryView {
         root: &Self::Root,
         _sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-        let mut view_wrapper = TypedColumnView::<RowItem, gtk::SingleSelection>::new();
+        let mut view_wrapper = TypedColumnView::<MemoryRow, gtk::NoSelection>::new();
         view_wrapper.append_column::<AddressColumn>();
         view_wrapper.append_column::<MemoryColumn>();
 
@@ -101,7 +91,10 @@ impl SimpleComponent for MemoryView {
             MemoryMsg::UpdateMemory(new_mem) => {
                 self.view_wrapper.clear();
                 new_mem.into_iter().enumerate().for_each(|(idx, val)| {
-                    self.view_wrapper.append(RowItem::new(idx as u32, val));
+                    self.view_wrapper.append(MemoryRow {
+                        addr: idx as u32,
+                        value: val,
+                    });
                 })
             }
         }

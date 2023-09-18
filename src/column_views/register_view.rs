@@ -1,12 +1,8 @@
-use relm4::gtk::prelude::ListItemExt;
-use std::cell::Ref;
-
-use gtk::gio::ListStore;
-use gtk::glib::prelude::*;
-use gtk::glib::BoxedAnyObject;
 use relm4::{gtk::traits::WidgetExt, prelude::*};
-
-use crate::column_views::grid_cell::{Entry, GridCell};
+use relm4::{
+    typed_view::column::{LabelColumn, TypedColumnView},
+    ComponentParts, ComponentSender, SimpleComponent,
+};
 
 const REG_NUMBERS: [&str; 35] = [
     "", "", "", "$0", "$1", "$2", "$3", "$4", "$5", "$6", "$7", "$8", "$9", "$10", "$11", "$12",
@@ -20,24 +16,76 @@ const REG_ALIAS: [&str; 35] = [
     "$s7", "$t8", "$t9", "$k0", "$k1", "$gp", "$sp", "$fp", "$ra",
 ];
 
-struct Row {
-    reg_num: String,
-    reg_alias: String,
-    reg_val: String,
+pub struct RegisterRow {
+    reg_num: &'static str,
+    reg_alias: &'static str,
+    reg_val: u32,
+}
+
+pub struct RegNumColumn;
+
+impl LabelColumn for RegNumColumn {
+    type Item = RegisterRow;
+
+    type Value = &'static str;
+
+    const COLUMN_NAME: &'static str = "Register Name";
+
+    const ENABLE_SORT: bool = false;
+
+    fn get_cell_value(item: &Self::Item) -> Self::Value {
+        item.reg_num
+    }
+}
+
+pub struct RegAliasColumn;
+
+impl LabelColumn for RegAliasColumn {
+    type Item = RegisterRow;
+
+    type Value = &'static str;
+
+    const COLUMN_NAME: &'static str = "Register Alias";
+
+    const ENABLE_SORT: bool = false;
+
+    fn get_cell_value(item: &Self::Item) -> Self::Value {
+        item.reg_alias
+    }
+}
+
+pub struct RegisterColumn;
+
+impl LabelColumn for RegisterColumn {
+    type Item = RegisterRow;
+
+    type Value = u32;
+
+    const COLUMN_NAME: &'static str = "Register Contents";
+
+    const ENABLE_SORT: bool = false;
+
+    fn get_cell_value(item: &Self::Item) -> Self::Value {
+        item.reg_val
+    }
+
+    fn format_cell_value(value: &Self::Value) -> String {
+        format!("0x{:08x}", value)
+    }
 }
 
 pub struct RegisterView {
-    view: gtk::ColumnView,
+    view_wrapper: TypedColumnView<RegisterRow, gtk::NoSelection>,
 }
 
 #[derive(Debug)]
-pub enum RegViewMsg {
+pub enum RegMsg {
     UpdateRegisters(Vec<u32>),
 }
 
 #[relm4::component(pub)]
 impl SimpleComponent for RegisterView {
-    type Input = RegViewMsg;
+    type Input = RegMsg;
     type Output = crate::Msg;
     type Init = ();
 
@@ -46,128 +94,57 @@ impl SimpleComponent for RegisterView {
         root: &Self::Root,
         _sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-        let register_store = ListStore::new::<BoxedAnyObject>();
+        let mut view_wrapper = TypedColumnView::<RegisterRow, gtk::NoSelection>::new();
+        view_wrapper.append_column::<RegNumColumn>();
+        view_wrapper.append_column::<RegAliasColumn>();
+        view_wrapper.append_column::<RegisterColumn>();
+
+        view_wrapper.get_columns().iter().for_each(|(_, c)| {
+            c.set_expand(true);
+        });
 
         (0..35).for_each(|idx| {
-            register_store.append(&BoxedAnyObject::new(Row {
-                reg_num: REG_NUMBERS[idx].to_string(),
-                reg_alias: REG_ALIAS[idx].to_string(),
-                reg_val: format!("0x{:08x}", 0),
-            }))
+            view_wrapper.append(RegisterRow {
+                reg_num: REG_NUMBERS[idx],
+                reg_alias: REG_ALIAS[idx],
+                reg_val: 0,
+            });
         });
 
-        let sel = gtk::SingleSelection::new(Some(register_store));
+        let model = RegisterView { view_wrapper };
 
-        let view = gtk::ColumnView::new(Some(sel));
-
-        let column_1_factory = gtk::SignalListItemFactory::new();
-        let column_2_factory = gtk::SignalListItemFactory::new();
-        let column_3_factory = gtk::SignalListItemFactory::new();
-
-        column_1_factory.connect_setup(move |_factory, item| {
-            let item = item.downcast_ref::<gtk::ListItem>().unwrap();
-            let row = GridCell::new();
-            item.set_child(Some(&row));
-        });
-
-        column_1_factory.connect_bind(move |_factory, item| {
-            let item = item.downcast_ref::<gtk::ListItem>().unwrap();
-            let child = item.child().and_downcast::<GridCell>().unwrap();
-            let entry = item.item().and_downcast::<BoxedAnyObject>().unwrap();
-            let r: Ref<Row> = entry.borrow();
-            let ent = Entry {
-                name: r.reg_num.to_string(),
-            };
-            child.set_entry(&ent);
-        });
-
-        column_2_factory.connect_setup(move |_factory, item| {
-            let item = item.downcast_ref::<gtk::ListItem>().unwrap();
-            let row = GridCell::new();
-            item.set_child(Some(&row));
-        });
-
-        column_2_factory.connect_bind(move |_factory, item| {
-            let item = item.downcast_ref::<gtk::ListItem>().unwrap();
-            let child = item.child().and_downcast::<GridCell>().unwrap();
-            let entry = item.item().and_downcast::<BoxedAnyObject>().unwrap();
-            let r: Ref<Row> = entry.borrow();
-            let ent = Entry {
-                name: r.reg_alias.to_string(),
-            };
-            child.set_entry(&ent);
-        });
-
-        column_3_factory.connect_setup(move |_factory, item| {
-            let item = item.downcast_ref::<gtk::ListItem>().unwrap();
-            let row = GridCell::new();
-            item.set_child(Some(&row));
-        });
-
-        column_3_factory.connect_bind(move |_factory, item| {
-            let item = item.downcast_ref::<gtk::ListItem>().unwrap();
-            let child = item.child().and_downcast::<GridCell>().unwrap();
-            let entry = item.item().and_downcast::<BoxedAnyObject>().unwrap();
-            let r: Ref<Row> = entry.borrow();
-            let ent = Entry {
-                name: r.reg_val.to_string(),
-            };
-            child.set_entry(&ent);
-        });
-
-        let column_1 = gtk::ColumnViewColumn::new(Some("Register Number"), Some(column_1_factory));
-        let column_2 = gtk::ColumnViewColumn::new(Some("Register Alias"), Some(column_2_factory));
-        let column_3 =
-            gtk::ColumnViewColumn::new(Some("Register Contents"), Some(column_3_factory));
-
-        column_1.set_expand(true);
-        column_2.set_expand(true);
-        column_3.set_expand(true);
-        view.append_column(&column_1);
-        view.append_column(&column_2);
-        view.append_column(&column_3);
-        view.set_show_row_separators(true);
-        view.set_show_column_separators(true);
-
-        let model = RegisterView { view };
-
+        let my_view = &model.view_wrapper.view;
+        my_view.set_show_row_separators(true);
+        my_view.set_show_column_separators(true);
         let widgets = view_output!();
-
         ComponentParts { model, widgets }
     }
 
     fn update(&mut self, msg: Self::Input, _: ComponentSender<Self>) {
         match msg {
-            RegViewMsg::UpdateRegisters(new_contents) => {
-                let register_store = ListStore::new::<BoxedAnyObject>();
-
-                let mut back = new_contents[..32].to_owned();
-                let mut front = new_contents[32..].to_owned();
-
-                front.reverse();
-                front.append(&mut back);
-
-                front.iter().enumerate().for_each(|(idx, val)| {
-                    register_store.append(&BoxedAnyObject::new(Row {
-                        reg_num: REG_NUMBERS[idx].to_string(),
-                        reg_alias: REG_ALIAS[idx].to_string(),
-                        reg_val: format!("0x{:08x}", val),
-                    }))
-                });
-
-                let sel = gtk::SingleSelection::new(Some(register_store));
-
-                self.view.set_model(Some(&sel));
+            RegMsg::UpdateRegisters(new_registers) => {
+                self.view_wrapper.clear();
+                new_registers
+                    .into_iter()
+                    .enumerate()
+                    .for_each(|(idx, val)| {
+                        self.view_wrapper.append(RegisterRow {
+                            reg_num: REG_NUMBERS[idx],
+                            reg_alias: REG_ALIAS[idx],
+                            reg_val: val,
+                        });
+                    });
             }
         }
     }
 
     view! {
         register_view = gtk::ScrolledWindow {
-                set_hexpand: true,
-                set_vexpand: true,
-                set_margin_all: 5,
-                set_child = Some(&model.view),
-            }
+            set_hexpand: true,
+            set_vexpand: true,
+            set_margin_all: 5,
+            #[local_ref]
+            my_view -> gtk::ColumnView {}
+        }
     }
 }

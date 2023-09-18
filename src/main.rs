@@ -7,8 +7,8 @@ use std::path::PathBuf;
 use std::sync::mpsc;
 use std::sync::mpsc::Sender;
 
-use column_views::memory_view::{MemoryView, MemoryMsg};
-use column_views::register_view::{RegViewMsg, RegisterView};
+use column_views::memory_view::{MemoryMsg, MemoryView};
+use column_views::register_view::{RegMsg, RegisterView};
 use gtk::prelude::*;
 use lex_parse::lexer::tokenize;
 use lex_parse::parser::parse_vm;
@@ -315,7 +315,7 @@ impl Component for App {
 }
 
 fn update_registers_and_mem(app: &mut App) {
-    app.register_view.emit(RegViewMsg::UpdateRegisters(
+    app.register_view.emit(RegMsg::UpdateRegisters(
         (0..35)
             .map(|idx| app.vm.get_register(FromPrimitive::from_i32(idx).unwrap()))
             .collect(),
