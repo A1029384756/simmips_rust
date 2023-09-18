@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use std::sync::mpsc;
 use std::sync::mpsc::Sender;
 
-use column_views::memory_view::{MemoryView, MemoryViewMsg};
+use column_views::memory_view::{MemoryView, MemoryMsg};
 use column_views::register_view::{RegViewMsg, RegisterView};
 use gtk::prelude::*;
 use lex_parse::lexer::tokenize;
@@ -320,7 +320,7 @@ fn update_registers_and_mem(app: &mut App) {
             .map(|idx| app.vm.get_register(FromPrimitive::from_i32(idx).unwrap()))
             .collect(),
     ));
-    app.memory_view.emit(MemoryViewMsg::UpdateMemory(
+    app.memory_view.emit(MemoryMsg::UpdateMemory(
         (0..app.vm.get_memory_size())
             .map(|idx| app.vm.get_memory_byte(idx).unwrap())
             .collect(),
