@@ -1,30 +1,66 @@
-use relm4::gtk::prelude::ListItemExt;
-use std::cell::Ref;
-
-use gtk::gio::ListStore;
-use gtk::glib::prelude::*;
-use gtk::glib::BoxedAnyObject;
 use relm4::{gtk::traits::WidgetExt, prelude::*};
+use relm4::{
+    typed_view::column::{LabelColumn, TypedColumnView},
+    ComponentParts, ComponentSender, SimpleComponent,
+};
 
-use crate::column_views::grid_cell::{Entry, GridCell};
+pub struct MemoryRow {
+    addr: u32,
+    value: u8,
+}
 
-struct Row {
-    mem_addr: String,
-    mem_contents: String,
+pub struct AddressColumn;
+
+impl LabelColumn for AddressColumn {
+    type Item = MemoryRow;
+
+    type Value = u32;
+
+    const COLUMN_NAME: &'static str = "Memory Address";
+
+    const ENABLE_SORT: bool = false;
+
+    fn get_cell_value(item: &Self::Item) -> Self::Value {
+        item.addr
+    }
+
+    fn format_cell_value(value: &Self::Value) -> String {
+        format!("0x{:08x}", value)
+    }
+}
+
+pub struct MemoryColumn;
+
+impl LabelColumn for MemoryColumn {
+    type Item = MemoryRow;
+
+    type Value = u8;
+
+    const COLUMN_NAME: &'static str = "Memory Contents";
+
+    const ENABLE_SORT: bool = false;
+
+    fn get_cell_value(item: &Self::Item) -> Self::Value {
+        item.value
+    }
+
+    fn format_cell_value(value: &Self::Value) -> String {
+        format!("0x{:02x}", value)
+    }
 }
 
 pub struct MemoryView {
-    view: gtk::ColumnView,
+    view_wrapper: TypedColumnView<MemoryRow, gtk::NoSelection>,
 }
 
 #[derive(Debug)]
-pub enum MemoryViewMsg {
+pub enum MemoryMsg {
     UpdateMemory(Vec<u8>),
 }
 
 #[relm4::component(pub)]
 impl SimpleComponent for MemoryView {
-    type Input = MemoryViewMsg;
+    type Input = MemoryMsg;
     type Output = crate::Msg;
     type Init = ();
 
@@ -33,89 +69,44 @@ impl SimpleComponent for MemoryView {
         root: &Self::Root,
         _sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-        let register_store = ListStore::new::<BoxedAnyObject>();
+        let mut view_wrapper = TypedColumnView::<MemoryRow, gtk::NoSelection>::new();
+        view_wrapper.append_column::<AddressColumn>();
+        view_wrapper.append_column::<MemoryColumn>();
 
-        let sel = gtk::SingleSelection::new(Some(register_store));
-
-        let view = gtk::ColumnView::new(Some(sel));
-
-        let column_1_factory = gtk::SignalListItemFactory::new();
-        let column_2_factory = gtk::SignalListItemFactory::new();
-
-        column_1_factory.connect_setup(move |_factory, item| {
-            let item = item.downcast_ref::<gtk::ListItem>().unwrap();
-            let row = GridCell::new();
-            item.set_child(Some(&row));
+        view_wrapper.get_columns().iter().for_each(|(_, c)| {
+            c.set_expand(true);
         });
 
-        column_1_factory.connect_bind(move |_factory, item| {
-            let item = item.downcast_ref::<gtk::ListItem>().unwrap();
-            let child = item.child().and_downcast::<GridCell>().unwrap();
-            let entry = item.item().and_downcast::<BoxedAnyObject>().unwrap();
-            let r: Ref<Row> = entry.borrow();
-            let ent = Entry {
-                name: r.mem_addr.to_string(),
-            };
-            child.set_entry(&ent);
-        });
+        let model = MemoryView { view_wrapper };
 
-        column_2_factory.connect_setup(move |_factory, item| {
-            let item = item.downcast_ref::<gtk::ListItem>().unwrap();
-            let row = GridCell::new();
-            item.set_child(Some(&row));
-        });
-
-        column_2_factory.connect_bind(move |_factory, item| {
-            let item = item.downcast_ref::<gtk::ListItem>().unwrap();
-            let child = item.child().and_downcast::<GridCell>().unwrap();
-            let entry = item.item().and_downcast::<BoxedAnyObject>().unwrap();
-            let r: Ref<Row> = entry.borrow();
-            let ent = Entry {
-                name: r.mem_contents.to_string(),
-            };
-            child.set_entry(&ent);
-        });
-        let column_1 = gtk::ColumnViewColumn::new(Some("Memory Address"), Some(column_1_factory));
-        let column_2 = gtk::ColumnViewColumn::new(Some("Memory Contents"), Some(column_2_factory));
-
-        column_1.set_expand(true);
-        column_2.set_expand(true);
-        view.append_column(&column_1);
-        view.append_column(&column_2);
-        view.set_show_row_separators(true);
-        view.set_show_column_separators(true);
-
-        let model = MemoryView { view };
-
+        let my_view = &model.view_wrapper.view;
+        my_view.set_show_row_separators(true);
+        my_view.set_show_column_separators(true);
         let widgets = view_output!();
-
         ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, msg: Self::Input, _: ComponentSender<Self>) {
+    fn update(&mut self, msg: Self::Input, _sender: ComponentSender<Self>) {
         match msg {
-            MemoryViewMsg::UpdateMemory(new_contents) => {
-                let register_store = ListStore::new::<BoxedAnyObject>();
-                new_contents.iter().enumerate().for_each(|(idx, val)| {
-                    register_store.append(&BoxedAnyObject::new(Row {
-                        mem_addr: format!("0x{:08x}", idx),
-                        mem_contents: format!("0x{:02x}", val),
-                    }))
-                });
-
-                let sel = gtk::SingleSelection::new(Some(register_store));
-
-                self.view.set_model(Some(&sel));
+            MemoryMsg::UpdateMemory(new_mem) => {
+                self.view_wrapper.clear();
+                new_mem.into_iter().enumerate().for_each(|(idx, val)| {
+                    self.view_wrapper.append(MemoryRow {
+                        addr: idx as u32,
+                        value: val,
+                    });
+                })
             }
         }
     }
 
     view! {
-        register_view = gtk::ScrolledWindow {
-                set_hexpand: true,
-                set_vexpand: true,
-                set_margin_all: 5,
-                set_child = Some(&model.view),
-            }
+        memory_view = gtk::ScrolledWindow {
+            set_hexpand: true,
+            set_vexpand: true,
+            set_margin_all: 5,
+            #[local_ref]
+            my_view -> gtk::ColumnView {}
+        }
     }
 }
