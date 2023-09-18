@@ -1,121 +1,52 @@
-use relm4::gtk::prelude::ListItemExt;
-use std::cell::Ref;
+use relm4::{binding::U8Binding, typed_view::column::{LabelColumn, RelmColumn}, gtk::Label};
 
-use gtk::gio::ListStore;
-use gtk::glib::prelude::*;
-use gtk::glib::BoxedAnyObject;
-use relm4::{gtk::traits::WidgetExt, prelude::*};
-
-use crate::column_views::grid_cell::{Entry, GridCell};
-
-struct Row {
-    mem_addr: String,
-    mem_contents: String,
+struct RowItem {
+    value: u8,
+    binding: U8Binding,
 }
 
-pub struct MemoryView {
-    view: gtk::ColumnView,
+impl RowItem {
+    fn new(value: u8) -> Self {
+        Self { value, binding: U8Binding::new(0) }
+    }
 }
 
-#[derive(Debug)]
-pub enum MemoryViewMsg {
-    UpdateMemory(Vec<u8>),
-}
+struct AddressColumn;
 
-#[relm4::component(pub)]
-impl SimpleComponent for MemoryView {
-    type Input = MemoryViewMsg;
-    type Output = crate::Msg;
-    type Init = ();
+impl LabelColumn for AddressColumn {
+    type Item = RowItem;
 
-    fn init(
-        _: Self::Init,
-        root: &Self::Root,
-        _sender: ComponentSender<Self>,
-    ) -> ComponentParts<Self> {
-        let register_store = ListStore::new::<BoxedAnyObject>();
+    type Value = u8;
 
-        let sel = gtk::SingleSelection::new(Some(register_store));
+    const COLUMN_NAME: &'static str = "Memory Address";
 
-        let view = gtk::ColumnView::new(Some(sel));
+    const ENABLE_SORT: bool = false;
 
-        let column_1_factory = gtk::SignalListItemFactory::new();
-        let column_2_factory = gtk::SignalListItemFactory::new();
-
-        column_1_factory.connect_setup(move |_factory, item| {
-            let item = item.downcast_ref::<gtk::ListItem>().unwrap();
-            let row = GridCell::new();
-            item.set_child(Some(&row));
-        });
-
-        column_1_factory.connect_bind(move |_factory, item| {
-            let item = item.downcast_ref::<gtk::ListItem>().unwrap();
-            let child = item.child().and_downcast::<GridCell>().unwrap();
-            let entry = item.item().and_downcast::<BoxedAnyObject>().unwrap();
-            let r: Ref<Row> = entry.borrow();
-            let ent = Entry {
-                name: r.mem_addr.to_string(),
-            };
-            child.set_entry(&ent);
-        });
-
-        column_2_factory.connect_setup(move |_factory, item| {
-            let item = item.downcast_ref::<gtk::ListItem>().unwrap();
-            let row = GridCell::new();
-            item.set_child(Some(&row));
-        });
-
-        column_2_factory.connect_bind(move |_factory, item| {
-            let item = item.downcast_ref::<gtk::ListItem>().unwrap();
-            let child = item.child().and_downcast::<GridCell>().unwrap();
-            let entry = item.item().and_downcast::<BoxedAnyObject>().unwrap();
-            let r: Ref<Row> = entry.borrow();
-            let ent = Entry {
-                name: r.mem_contents.to_string(),
-            };
-            child.set_entry(&ent);
-        });
-        let column_1 = gtk::ColumnViewColumn::new(Some("Memory Address"), Some(column_1_factory));
-        let column_2 = gtk::ColumnViewColumn::new(Some("Memory Contents"), Some(column_2_factory));
-
-        column_1.set_expand(true);
-        column_2.set_expand(true);
-        view.append_column(&column_1);
-        view.append_column(&column_2);
-        view.set_show_row_separators(true);
-        view.set_show_column_separators(true);
-
-        let model = MemoryView { view };
-
-        let widgets = view_output!();
-
-        ComponentParts { model, widgets }
+    fn get_cell_value(item: &Self::Item) -> Self::Value {
+        item.value
     }
 
-    fn update(&mut self, msg: Self::Input, _: ComponentSender<Self>) {
-        match msg {
-            MemoryViewMsg::UpdateMemory(new_contents) => {
-                let register_store = ListStore::new::<BoxedAnyObject>();
-                new_contents.iter().enumerate().for_each(|(idx, val)| {
-                    register_store.append(&BoxedAnyObject::new(Row {
-                        mem_addr: format!("0x{:08x}", idx),
-                        mem_contents: format!("0x{:02x}", val),
-                    }))
-                });
+    fn format_cell_value(value: &Self::Value) -> String {
+        format!("0x{:08x}", value)
+    }
+}
 
-                let sel = gtk::SingleSelection::new(Some(register_store));
+struct MemoryColumn;
 
-                self.view.set_model(Some(&sel));
-            }
-        }
+impl LabelColumn for MemoryColumn {
+    type Item = RowItem;
+
+    type Value = u8;
+
+    const COLUMN_NAME: &'static str = "Memory Contents";
+
+    const ENABLE_SORT: bool = false;
+
+    fn get_cell_value(item: &Self::Item) -> Self::Value {
+        item.value
     }
 
-    view! {
-        register_view = gtk::ScrolledWindow {
-                set_hexpand: true,
-                set_vexpand: true,
-                set_margin_all: 5,
-                set_child = Some(&model.view),
-            }
+    fn format_cell_value(value: &Self::Value) -> String {
+        format!("0x{:08x}", value)
     }
 }
