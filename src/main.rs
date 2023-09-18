@@ -119,7 +119,7 @@ impl Component for App {
     fn update(&mut self, msg: Msg, sender: ComponentSender<Self>, _root: &Self::Root) {
         match msg {
             Msg::OpenRequest => self.open_dialog.emit(OpenDialogMsg::Open),
-            Msg::OpenResponse(path) => match std::fs::read_to_string(&path) {
+            Msg::OpenResponse(path) => match std::fs::read_to_string(path) {
                 Ok(contents) => {
                     self.asm_view_buffer.set_text(&contents);
 
@@ -163,19 +163,15 @@ impl Component for App {
                 sender.oneshot_command(async move {
                     while !thread_vm.is_error() {
                         thread_vm.step();
-                        match thread_rx.try_recv() {
-                            Ok(_) => break,
-                            Err(_) => {}
+                        if thread_rx.try_recv().is_ok() {
+                            break;
                         }
                     }
                     CommandMsg::ThreadFinished(thread_vm)
                 });
             }
             Msg::Break => match &self.app_to_thread {
-                Some(tx) => match tx.send(()) {
-                    Ok(_) => {}
-                    Err(_) => {}
-                },
+                Some(tx) => if tx.send(()).is_ok() {},
                 None => {}
             },
             Msg::ShowMessage(message) => {

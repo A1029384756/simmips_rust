@@ -66,8 +66,8 @@ impl VirtualMachineInterface for VirtualMachine {
 
         match self.instruction_memory.get(self.pc as usize) {
             Some(inst) => match inst.opcode {
-                Opcode::MFHI => match inst.args.first() {
-                    Some(Argument::REGISTER(reg)) => {
+                Opcode::Mfhi => match inst.args.first() {
+                    Some(Argument::Register(reg)) => {
                         self.registers[*reg as usize] = self.hi;
                         self.pc += 1;
                     }
@@ -77,8 +77,8 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::MFLO => match inst.args.first() {
-                    Some(Argument::REGISTER(reg)) => {
+                Opcode::Mflo => match inst.args.first() {
+                    Some(Argument::Register(reg)) => {
                         self.registers[*reg as usize] = self.lo;
                         self.pc += 1;
                     }
@@ -88,8 +88,8 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::MTHI => match inst.args.first() {
-                    Some(Argument::REGISTER(reg)) => {
+                Opcode::Mthi => match inst.args.first() {
+                    Some(Argument::Register(reg)) => {
                         self.hi = self.get_register(*reg);
                         self.pc += 1;
                     }
@@ -99,8 +99,8 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::MTLO => match inst.args.first() {
-                    Some(Argument::REGISTER(reg)) => {
+                Opcode::Mtlo => match inst.args.first() {
+                    Some(Argument::Register(reg)) => {
                         self.lo = self.get_register(*reg);
                         self.pc += 1;
                     }
@@ -110,7 +110,7 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::LW => match self.get_data_instruction() {
+                Opcode::Lw => match self.get_data_instruction() {
                     Some((dest, address)) => match self
                         .data_memory
                         .get((address as usize)..=(address + 3) as usize)
@@ -134,7 +134,7 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::LH => match self.get_data_instruction() {
+                Opcode::Lh => match self.get_data_instruction() {
                     Some((dest, address)) => match self
                         .data_memory
                         .get((address as usize)..=(address + 1) as usize)
@@ -158,7 +158,7 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::LB => match self.get_data_instruction() {
+                Opcode::Lb => match self.get_data_instruction() {
                     Some((dest, address)) => match self.data_memory.get(address as usize) {
                         Some(byte) => {
                             self.registers[*dest as usize] = *byte as u32;
@@ -176,7 +176,7 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::LA => match self.get_data_instruction() {
+                Opcode::La => match self.get_data_instruction() {
                     Some((dest, address)) => {
                         self.registers[*dest as usize] = address;
                         self.pc += 1;
@@ -187,7 +187,7 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::SW => match self.get_data_instruction() {
+                Opcode::Sw => match self.get_data_instruction() {
                     Some((source, address)) => {
                         self.get_register(*source)
                             .to_le_bytes()
@@ -204,7 +204,7 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::SH => match self.get_data_instruction() {
+                Opcode::Sh => match self.get_data_instruction() {
                     Some((source, address)) => {
                         self.get_register(*source)
                             .to_le_bytes()
@@ -222,7 +222,7 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::SB => match self.get_data_instruction() {
+                Opcode::Sb => match self.get_data_instruction() {
                     Some((source, address)) => {
                         self.data_memory[address as usize] =
                             *self.get_register(*source).to_le_bytes().first().unwrap();
@@ -234,9 +234,9 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::ADD => match self.get_signed_instruction() {
+                Opcode::Add => match self.get_signed_instruction() {
                     Some((dest, a, b)) => {
-                        match i32::try_from((a as i32 as i64) + (b as i32 as i64)) {
+                        match i32::try_from((a as i64) + (b as i64)) {
                             Ok(result) => {
                                 self.registers[*dest as usize] = result as u32;
                                 self.pc += 1;
@@ -254,7 +254,7 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::ADDU => match self.get_unsigned_instruction() {
+                Opcode::Addu => match self.get_unsigned_instruction() {
                     Some((dest, a, b)) => {
                         let a = Wrapping(a as u64);
                         let b = Wrapping(b as u64);
@@ -267,9 +267,9 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::SUB => match self.get_signed_instruction() {
+                Opcode::Sub => match self.get_signed_instruction() {
                     Some((dest, a, b)) => {
-                        match i32::try_from((a as i32 as i64) - (b as i32 as i64)) {
+                        match i32::try_from(a as i64 - b as i64) {
                             Ok(result) => {
                                 self.registers[*dest as usize] = result as u32;
                                 self.pc += 1;
@@ -287,7 +287,7 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::SUBU => match self.get_unsigned_instruction() {
+                Opcode::Subu => match self.get_unsigned_instruction() {
                     Some((dest, a, b)) => {
                         let a = Wrapping(a as u64);
                         let b = Wrapping(b as u64);
@@ -300,9 +300,9 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::MUL => match self.get_signed_instruction() {
+                Opcode::Mul => match self.get_signed_instruction() {
                     Some((dest, a, b)) => {
-                        let result = a as i32 as i64 * b as i32 as i64;
+                        let result = a as i64 * b as i64;
                         self.registers[*dest as usize] = result as u32;
                         self.hi = (result >> 32) as u32;
                         self.lo = result as u32;
@@ -314,9 +314,9 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::MULO => match self.get_signed_instruction() {
+                Opcode::Mulo => match self.get_signed_instruction() {
                     Some((dest, a, b)) => {
-                        match i32::try_from((a as i32 as i64) * (b as i32 as i64)) {
+                        match i32::try_from(a as i64 * b as i64) {
                             Ok(result) => {
                                 self.registers[*dest as usize] = result as u32;
                                 self.pc += 1;
@@ -334,8 +334,8 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::MULOU => match self.get_unsigned_instruction() {
-                    Some((dest, a, b)) => match u32::try_from((a as u64) * (b as u64)) {
+                Opcode::Mulou => match self.get_unsigned_instruction() {
+                    Some((dest, a, b)) => match u32::try_from(a as u64 * b as u64) {
                         Ok(result) => {
                             self.registers[*dest as usize] = result;
                             self.pc += 1;
@@ -352,9 +352,9 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::REM => match self.get_signed_instruction() {
+                Opcode::Rem => match self.get_signed_instruction() {
                     Some((dest, a, b)) => {
-                        let result = a as i32 as i64 % b as i32 as i64;
+                        let result = a as i64 % b as i64;
                         self.registers[*dest as usize] = result as u32;
                         self.hi = (result >> 32) as u32;
                         self.lo = result as u32;
@@ -366,7 +366,7 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::REMU => match self.get_unsigned_instruction() {
+                Opcode::Remu => match self.get_unsigned_instruction() {
                     Some((dest, a, b)) => {
                         let result = a as u64 % b as u64;
                         self.registers[*dest as usize] = result as u32;
@@ -380,8 +380,8 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::MULT => match (inst.args.first(), inst.args.get(1)) {
-                    (Some(Argument::REGISTER(a)), Some(Argument::REGISTER(b))) => {
+                Opcode::Mult => match (inst.args.first(), inst.args.get(1)) {
+                    (Some(Argument::Register(a)), Some(Argument::Register(b))) => {
                         let result = self.registers[*a as usize] as i32 as i64
                             * self.registers[*b as usize] as i32 as i64;
 
@@ -395,8 +395,8 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::MULTU => match (inst.args.first(), inst.args.get(1)) {
-                    (Some(Argument::REGISTER(a)), Some(Argument::REGISTER(b))) => {
+                Opcode::Multu => match (inst.args.first(), inst.args.get(1)) {
+                    (Some(Argument::Register(a)), Some(Argument::Register(b))) => {
                         let result =
                             self.registers[*a as usize] as u64 * self.registers[*b as usize] as u64;
                         self.hi = (result >> 32) as u32;
@@ -409,10 +409,10 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::ABS => match (inst.args.first(), inst.args.get(1)) {
-                    (Some(Argument::REGISTER(dest)), Some(Argument::REGISTER(src))) => {
+                Opcode::Abs => match (inst.args.first(), inst.args.get(1)) {
+                    (Some(Argument::Register(dest)), Some(Argument::Register(src))) => {
                         self.registers[*dest as usize] =
-                            (self.registers[*src as usize] as i32).abs() as u32;
+                            (self.registers[*src as usize] as i32).unsigned_abs();
                         self.pc += 1;
                     }
                     _ => {
@@ -421,11 +421,11 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::NEG => match (inst.args.first(), inst.args.get(1)) {
-                    (Some(Argument::REGISTER(dest)), Some(Argument::REGISTER(src))) => {
-                        match i32::try_from(-(self.registers[*src as usize] as i32)) {
+                Opcode::Neg => match (inst.args.first(), inst.args.get(1)) {
+                    (Some(Argument::Register(dest)), Some(Argument::Register(src))) => {
+                        match i32::try_from(self.registers[*src as usize]) {
                             Ok(neg) => {
-                                self.registers[*dest as usize] = neg as u32;
+                                self.registers[*dest as usize] = -neg as u32;
                                 self.pc += 1;
                             }
                             Err(..) => {
@@ -441,8 +441,8 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::NEGU => match (inst.args.first(), inst.args.get(1)) {
-                    (Some(Argument::REGISTER(dest)), Some(Argument::REGISTER(src))) => {
+                Opcode::Negu => match (inst.args.first(), inst.args.get(1)) {
+                    (Some(Argument::Register(dest)), Some(Argument::Register(src))) => {
                         self.registers[*dest as usize] =
                             -(self.registers[*src as usize] as i32) as u32;
                         self.pc += 1;
@@ -453,7 +453,7 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::AND => match self.get_unsigned_instruction() {
+                Opcode::And => match self.get_unsigned_instruction() {
                     Some((dest, a, b)) => {
                         self.registers[*dest as usize] = a & b;
                         self.pc += 1;
@@ -464,7 +464,7 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::NOR => match self.get_unsigned_instruction() {
+                Opcode::Nor => match self.get_unsigned_instruction() {
                     Some((dest, a, b)) => {
                         self.registers[*dest as usize] = !(a | b);
                         self.pc += 1;
@@ -475,7 +475,7 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::OR => match self.get_unsigned_instruction() {
+                Opcode::Or => match self.get_unsigned_instruction() {
                     Some((dest, a, b)) => {
                         self.registers[*dest as usize] = a | b;
                         self.pc += 1;
@@ -486,7 +486,7 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::XOR => match self.get_unsigned_instruction() {
+                Opcode::Xor => match self.get_unsigned_instruction() {
                     Some((dest, a, b)) => {
                         self.registers[*dest as usize] = a ^ b;
                         self.pc += 1;
@@ -497,8 +497,8 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::MOVE => match (inst.args.first(), inst.args.get(1)) {
-                    (Some(Argument::REGISTER(dest)), Some(Argument::REGISTER(src))) => {
+                Opcode::Move => match (inst.args.first(), inst.args.get(1)) {
+                    (Some(Argument::Register(dest)), Some(Argument::Register(src))) => {
                         self.registers[*dest as usize] = self.registers[*src as usize];
                         self.pc += 1;
                     }
@@ -508,8 +508,8 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::LI => match (inst.args.first(), inst.args.get(1)) {
-                    (Some(Argument::REGISTER(dest)), Some(Argument::IMMEDIATE(imm))) => {
+                Opcode::Li => match (inst.args.first(), inst.args.get(1)) {
+                    (Some(Argument::Register(dest)), Some(Argument::Immediate(imm))) => {
                         self.registers[*dest as usize] = *imm;
                         self.pc += 1;
                     }
@@ -519,11 +519,11 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::DIV => match (inst.args.first(), inst.args.get(1), inst.args.get(2)) {
+                Opcode::Div => match (inst.args.first(), inst.args.get(1), inst.args.get(2)) {
                     (
-                        Some(Argument::REGISTER(dest)),
-                        Some(Argument::REGISTER(a)),
-                        Some(Argument::REGISTER(b)),
+                        Some(Argument::Register(dest)),
+                        Some(Argument::Register(a)),
+                        Some(Argument::Register(b)),
                     ) => match (
                         (self.registers[*a as usize] as i32)
                             .checked_div(self.registers[*b as usize] as i32),
@@ -539,9 +539,9 @@ impl VirtualMachineInterface for VirtualMachine {
                         _ => self.pc += 1,
                     },
                     (
-                        Some(Argument::REGISTER(dest)),
-                        Some(Argument::REGISTER(a)),
-                        Some(Argument::IMMEDIATE(b)),
+                        Some(Argument::Register(dest)),
+                        Some(Argument::Register(a)),
+                        Some(Argument::Immediate(b)),
                     ) => match (
                         (self.registers[*a as usize] as i32).checked_div(*b as i32),
                         (self.registers[*a as usize] as i32).checked_rem(*b as i32),
@@ -554,7 +554,7 @@ impl VirtualMachineInterface for VirtualMachine {
                         }
                         _ => self.pc += 1,
                     },
-                    (Some(Argument::REGISTER(a)), Some(Argument::REGISTER(b)), None) => match (
+                    (Some(Argument::Register(a)), Some(Argument::Register(b)), None) => match (
                         (self.registers[*a as usize] as i32)
                             .checked_div(self.registers[*b as usize] as i32),
                         (self.registers[*a as usize] as i32)
@@ -573,11 +573,11 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::DIVU => match (inst.args.first(), inst.args.get(1), inst.args.get(2)) {
+                Opcode::Divu => match (inst.args.first(), inst.args.get(1), inst.args.get(2)) {
                     (
-                        Some(Argument::REGISTER(dest)),
-                        Some(Argument::REGISTER(a)),
-                        Some(Argument::REGISTER(b)),
+                        Some(Argument::Register(dest)),
+                        Some(Argument::Register(a)),
+                        Some(Argument::Register(b)),
                     ) => match (
                         (self.registers[*a as usize]).checked_div(self.registers[*b as usize]),
                         (self.registers[*a as usize]).checked_rem(self.registers[*b as usize]),
@@ -591,9 +591,9 @@ impl VirtualMachineInterface for VirtualMachine {
                         _ => self.pc += 1,
                     },
                     (
-                        Some(Argument::REGISTER(dest)),
-                        Some(Argument::REGISTER(a)),
-                        Some(Argument::IMMEDIATE(b)),
+                        Some(Argument::Register(dest)),
+                        Some(Argument::Register(a)),
+                        Some(Argument::Immediate(b)),
                     ) => match (
                         (self.registers[*a as usize]).checked_div(*b),
                         (self.registers[*a as usize]).checked_rem(*b),
@@ -606,7 +606,7 @@ impl VirtualMachineInterface for VirtualMachine {
                         }
                         _ => self.pc += 1,
                     },
-                    (Some(Argument::REGISTER(a)), Some(Argument::REGISTER(b)), None) => match (
+                    (Some(Argument::Register(a)), Some(Argument::Register(b)), None) => match (
                         (self.registers[*a as usize]).checked_div(self.registers[*b as usize]),
                         (self.registers[*a as usize]).checked_rem(self.registers[*b as usize]),
                     ) {
@@ -623,12 +623,12 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::NOT => match (inst.args.first(), inst.args.get(1)) {
-                    (Some(Argument::REGISTER(dest)), Some(Argument::REGISTER(src))) => {
+                Opcode::Not => match (inst.args.first(), inst.args.get(1)) {
+                    (Some(Argument::Register(dest)), Some(Argument::Register(src))) => {
                         self.registers[*dest as usize] = !self.registers[*src as usize];
                         self.pc += 1;
                     }
-                    (Some(Argument::REGISTER(dest)), Some(Argument::IMMEDIATE(src))) => {
+                    (Some(Argument::Register(dest)), Some(Argument::Immediate(src))) => {
                         self.registers[*dest as usize] = !(*src);
                         self.pc += 1;
                     }
@@ -638,7 +638,7 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::BEQ => match self.get_branch_operation() {
+                Opcode::Beq => match self.get_branch_operation() {
                     Some((a, b, label)) => {
                         if a == b {
                             match self.labels.get(&label) {
@@ -659,7 +659,7 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::BNE => match self.get_branch_operation() {
+                Opcode::Bne => match self.get_branch_operation() {
                     Some((a, b, label)) => {
                         if a != b {
                             match self.labels.get(&label) {
@@ -680,7 +680,7 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::BLT => match self.get_branch_operation() {
+                Opcode::Blt => match self.get_branch_operation() {
                     Some((a, b, label)) => {
                         if a < b {
                             match self.labels.get(&label) {
@@ -701,7 +701,7 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::BLE => match self.get_branch_operation() {
+                Opcode::Ble => match self.get_branch_operation() {
                     Some((a, b, label)) => {
                         if a <= b {
                             match self.labels.get(&label) {
@@ -722,7 +722,7 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::BGT => match self.get_branch_operation() {
+                Opcode::Bgt => match self.get_branch_operation() {
                     Some((a, b, label)) => {
                         if a > b {
                             match self.labels.get(&label) {
@@ -743,7 +743,7 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::BGE => match self.get_branch_operation() {
+                Opcode::Bge => match self.get_branch_operation() {
                     Some((a, b, label)) => {
                         if a >= b {
                             match self.labels.get(&label) {
@@ -764,8 +764,8 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::JUMP => match inst.args.first() {
-                    Some(Argument::LABEL(label)) => match self.labels.get(label) {
+                Opcode::Jump => match inst.args.first() {
+                    Some(Argument::Label(label)) => match self.labels.get(label) {
                         Some(addr) => self.pc = *addr,
                         None => {
                             self.error_state = true;
@@ -779,8 +779,8 @@ impl VirtualMachineInterface for VirtualMachine {
                             "Invalid instruction format, resulting from parse error".to_string();
                     }
                 },
-                Opcode::NOP => self.pc += 1,
-                Opcode::NONE => {
+                Opcode::Nop => self.pc += 1,
+                Opcode::None => {
                     self.error_state = true;
                     self.error_message =
                         "Unknown instruction, resulting from parse error".to_string();
@@ -789,7 +789,6 @@ impl VirtualMachineInterface for VirtualMachine {
             None => {
                 self.error_state = true;
                 self.error_message = "Program counter out of range".to_string();
-                return;
             }
         }
     }
@@ -813,18 +812,18 @@ impl VirtualMachine {
 
     pub(crate) fn insert_label(&mut self, label: LabelType) {
         match label {
-            LabelType::DATA(val) => self.labels.insert(val, self.data_mem_back),
-            LabelType::INSTRUCTION(val) => self
+            LabelType::Data(val) => self.labels.insert(val, self.data_mem_back),
+            LabelType::Instruction(val) => self
                 .labels
                 .insert(val, self.instruction_memory.len() as u32),
         };
     }
 
-    pub(crate) fn add_data(&mut self, layout: &String, value: &String) {
+    pub(crate) fn add_data(&mut self, layout: &str, value: &str) {
         let mut data_val: i64 = 0;
         let mut iterations: u32 = 0;
 
-        match layout.as_str() {
+        match layout {
             ".word" => {
                 iterations = 4;
                 data_val = value.parse::<i64>().expect("Invalid integer");
@@ -851,7 +850,7 @@ impl VirtualMachine {
                     self.data_memory[self.data_mem_back as usize] = c as u8;
                     self.data_mem_back += 1;
                 }
-                self.data_memory[self.data_mem_back as usize] = '\0' as u8;
+                self.data_memory[self.data_mem_back as usize] = b'\0';
                 self.data_mem_back += 1;
             }
             _ => panic!("Invalid data layout"),
@@ -873,29 +872,29 @@ impl VirtualMachine {
         let inst = &self.instruction_memory[self.pc as usize];
 
         match (inst.args.first(), inst.args.get(1), inst.args.get(2)) {
-            (Some(Argument::REGISTER(reg_s)), Some(Argument::REGISTER(reg_d)), None) => {
+            (Some(Argument::Register(reg_s)), Some(Argument::Register(reg_d)), None) => {
                 Some((reg_s, self.registers[*reg_d as usize]))
             }
-            (Some(Argument::REGISTER(reg_s)), Some(Argument::IMMEDIATE(imm)), None) => {
+            (Some(Argument::Register(reg_s)), Some(Argument::Immediate(imm)), None) => {
                 Some((reg_s, *imm))
             }
-            (Some(Argument::REGISTER(reg_s)), Some(Argument::LABEL(label)), None) => {
+            (Some(Argument::Register(reg_s)), Some(Argument::Label(label)), None) => {
                 Some((reg_s, *self.labels.get(label).unwrap()))
             }
             (
-                Some(Argument::REGISTER(reg_s)),
-                Some(Argument::OFFSET(offset)),
-                Some(Argument::REGISTER(reg_d)),
+                Some(Argument::Register(reg_s)),
+                Some(Argument::Offset(offset)),
+                Some(Argument::Register(reg_d)),
             ) => Some((reg_s, self.registers[*reg_d as usize] + offset)),
             (
-                Some(Argument::REGISTER(reg_s)),
-                Some(Argument::OFFSET(offset)),
-                Some(Argument::IMMEDIATE(imm)),
+                Some(Argument::Register(reg_s)),
+                Some(Argument::Offset(offset)),
+                Some(Argument::Immediate(imm)),
             ) => Some((reg_s, *imm + offset)),
             (
-                Some(Argument::REGISTER(reg_s)),
-                Some(Argument::OFFSET(offset)),
-                Some(Argument::LABEL(label)),
+                Some(Argument::Register(reg_s)),
+                Some(Argument::Offset(offset)),
+                Some(Argument::Label(label)),
             ) => Some((reg_s, *self.labels.get(label).unwrap() + offset)),
             _ => None,
         }
@@ -905,18 +904,18 @@ impl VirtualMachine {
         let inst = &self.instruction_memory[self.pc as usize];
         match (inst.args.first(), inst.args.get(1), inst.args.get(2)) {
             (
-                Some(Argument::REGISTER(reg_d)),
-                Some(Argument::REGISTER(reg_s1)),
-                Some(Argument::REGISTER(reg_s2)),
+                Some(Argument::Register(reg_d)),
+                Some(Argument::Register(reg_s1)),
+                Some(Argument::Register(reg_s2)),
             ) => Some((
                 reg_d,
                 self.get_register(*reg_s1) as i32,
                 self.get_register(*reg_s2) as i32,
             )),
             (
-                Some(Argument::REGISTER(reg_d)),
-                Some(Argument::REGISTER(reg_s1)),
-                Some(Argument::IMMEDIATE(imm)),
+                Some(Argument::Register(reg_d)),
+                Some(Argument::Register(reg_s1)),
+                Some(Argument::Immediate(imm)),
             ) => Some((reg_d, self.get_register(*reg_s1) as i32, *imm as i32)),
             _ => None,
         }
@@ -926,18 +925,18 @@ impl VirtualMachine {
         let inst = &self.instruction_memory[self.pc as usize];
         match (inst.args.first(), inst.args.get(1), inst.args.get(2)) {
             (
-                Some(Argument::REGISTER(reg_d)),
-                Some(Argument::REGISTER(reg_s1)),
-                Some(Argument::REGISTER(reg_s2)),
+                Some(Argument::Register(reg_d)),
+                Some(Argument::Register(reg_s1)),
+                Some(Argument::Register(reg_s2)),
             ) => Some((
                 reg_d,
                 self.get_register(*reg_s1),
                 self.get_register(*reg_s2),
             )),
             (
-                Some(Argument::REGISTER(reg_d)),
-                Some(Argument::REGISTER(reg_s1)),
-                Some(Argument::IMMEDIATE(imm)),
+                Some(Argument::Register(reg_d)),
+                Some(Argument::Register(reg_s1)),
+                Some(Argument::Immediate(imm)),
             ) => Some((reg_d, self.get_register(*reg_s1), *imm)),
             _ => None,
         }
@@ -947,18 +946,18 @@ impl VirtualMachine {
         let inst = &self.instruction_memory[self.pc as usize];
         match (inst.args.first(), inst.args.get(1), inst.args.get(2)) {
             (
-                Some(Argument::REGISTER(a)),
-                Some(Argument::REGISTER(b)),
-                Some(Argument::LABEL(label)),
+                Some(Argument::Register(a)),
+                Some(Argument::Register(b)),
+                Some(Argument::Label(label)),
             ) => Some((
                 self.registers[*a as usize],
                 self.registers[*b as usize],
                 label.to_string(),
             )),
             (
-                Some(Argument::REGISTER(a)),
-                Some(Argument::IMMEDIATE(b)),
-                Some(Argument::LABEL(label)),
+                Some(Argument::Register(a)),
+                Some(Argument::Immediate(b)),
+                Some(Argument::Label(label)),
             ) => Some((self.registers[*a as usize], *b, label.to_string())),
             _ => None,
         }

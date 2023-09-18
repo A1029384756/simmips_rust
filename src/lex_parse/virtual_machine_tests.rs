@@ -18,7 +18,7 @@ fn vm_load_instructions() {
         assert_eq!(vm.get_memory_byte(0).unwrap(), 10);
 
         vm.step();
-        assert_eq!(vm.get_register(RegisterKind::REG10), 10);
+        assert_eq!(vm.get_register(RegisterKind::Reg10), 10);
         assert!(!vm.is_error());
 
         vm.step();
@@ -34,7 +34,7 @@ fn vm_load_instructions() {
         assert_eq!(vm.get_memory_byte(1).unwrap(), 5);
 
         vm.step();
-        assert_eq!(vm.get_register(RegisterKind::REG10), 1300);
+        assert_eq!(vm.get_register(RegisterKind::Reg10), 1300);
     }
     {
         let data = ".data\ntest: .word 300000\n.text\nlw $t2, ($t0)\n";
@@ -46,7 +46,7 @@ fn vm_load_instructions() {
         assert_eq!(vm.get_memory_byte(2).unwrap(), 4);
 
         vm.step();
-        assert_eq!(vm.get_register(RegisterKind::REG10), 300000);
+        assert_eq!(vm.get_register(RegisterKind::Reg10), 300000);
     }
 }
 
@@ -105,7 +105,7 @@ fn vm_instructionless() {
     let vm = parse_vm(tokenize(data).unwrap()).unwrap();
 
     assert_eq!(vm.get_current_source_line(), 0);
-    assert!(matches!(vm.get_memory_byte(1024), None));
+    assert!(vm.get_memory_byte(1024).is_none());
 }
 
 #[test]
@@ -121,10 +121,10 @@ fn vm_special_registers() {
         vm.step();
     }
 
-    assert_eq!(vm.get_register(RegisterKind::REG08), 5);
-    assert_eq!(vm.get_register(RegisterKind::REGHI), 0);
-    assert_eq!(vm.get_register(RegisterKind::REGLO), 25);
-    assert_eq!(vm.get_register(RegisterKind::REGPC), 2);
+    assert_eq!(vm.get_register(RegisterKind::Reg08), 5);
+    assert_eq!(vm.get_register(RegisterKind::RegHi), 0);
+    assert_eq!(vm.get_register(RegisterKind::RegLo), 25);
+    assert_eq!(vm.get_register(RegisterKind::RegPC), 2);
 }
 
 #[test]
@@ -138,11 +138,11 @@ fn vm_jump() {
     let mut vm = parse_vm(tokenize(data).unwrap()).unwrap();
     vm.step();
 
-    assert_eq!(vm.get_register(RegisterKind::REG08), 5);
-    assert_eq!(vm.get_register(RegisterKind::REGPC), 1);
+    assert_eq!(vm.get_register(RegisterKind::Reg08), 5);
+    assert_eq!(vm.get_register(RegisterKind::RegPC), 1);
     vm.step();
 
-    assert_eq!(vm.get_register(RegisterKind::REGPC), 0);
+    assert_eq!(vm.get_register(RegisterKind::RegPC), 0);
 }
 
 #[test]
@@ -156,7 +156,7 @@ fn vm_beq() {
         vm.step();
     }
 
-    assert_eq!(vm.get_register(RegisterKind::REG08), 10);
+    assert_eq!(vm.get_register(RegisterKind::Reg08), 10);
 }
 
 #[test]
@@ -170,7 +170,7 @@ fn vm_bne() {
         vm.step();
     }
 
-    assert_eq!(vm.get_register(RegisterKind::REG08), 10);
+    assert_eq!(vm.get_register(RegisterKind::Reg08), 10);
 }
 
 #[test]
@@ -184,7 +184,7 @@ fn vm_ble() {
         vm.step();
     }
 
-    assert_eq!(vm.get_register(RegisterKind::REG08), 15);
+    assert_eq!(vm.get_register(RegisterKind::Reg08), 15);
 }
 
 #[test]
@@ -200,22 +200,22 @@ fn vm_load_offset() {
 
     let mut vm = parse_vm(tokenize(data).unwrap()).unwrap();
 
-    assert_eq!(vm.get_memory_byte(0).unwrap(), 'h' as u8);
-    assert_eq!(vm.get_memory_byte(1).unwrap(), 'e' as u8);
-    assert_eq!(vm.get_memory_byte(2).unwrap(), 'l' as u8);
-    assert_eq!(vm.get_memory_byte(3).unwrap(), 'l' as u8);
-    assert_eq!(vm.get_memory_byte(4).unwrap(), 'o' as u8);
+    assert_eq!(vm.get_memory_byte(0).unwrap(), b'h');
+    assert_eq!(vm.get_memory_byte(1).unwrap(), b'e');
+    assert_eq!(vm.get_memory_byte(2).unwrap(), b'l');
+    assert_eq!(vm.get_memory_byte(3).unwrap(), b'l');
+    assert_eq!(vm.get_memory_byte(4).unwrap(), b'o');
 
     vm.step();
-    assert_eq!(vm.get_register(RegisterKind::REG08), 'h' as u32);
+    assert_eq!(vm.get_register(RegisterKind::Reg08), 'h' as u32);
     vm.step();
-    assert_eq!(vm.get_register(RegisterKind::REG09), 'e' as u32);
+    assert_eq!(vm.get_register(RegisterKind::Reg09), 'e' as u32);
     vm.step();
-    assert_eq!(vm.get_register(RegisterKind::REG10), 'l' as u32);
+    assert_eq!(vm.get_register(RegisterKind::Reg10), 'l' as u32);
     vm.step();
-    assert_eq!(vm.get_register(RegisterKind::REG11), 'l' as u32);
+    assert_eq!(vm.get_register(RegisterKind::Reg11), 'l' as u32);
     vm.step();
-    assert_eq!(vm.get_register(RegisterKind::REG12), 'o' as u32);
+    assert_eq!(vm.get_register(RegisterKind::Reg12), 'o' as u32);
 }
 
 #[test]
@@ -225,7 +225,7 @@ fn vm_nop() {
     let mut vm = parse_vm(tokenize(data).unwrap()).unwrap();
 
     vm.step();
-    assert_eq!(vm.get_register(RegisterKind::REGPC), 1);
+    assert_eq!(vm.get_register(RegisterKind::RegPC), 1);
 }
 
 #[test]
@@ -239,7 +239,7 @@ fn vm_store() {
     vm.step();
     vm.step();
 
-    assert_eq!(vm.get_register(RegisterKind::REG08), 258);
+    assert_eq!(vm.get_register(RegisterKind::Reg08), 258);
     assert_eq!(vm.get_memory_byte(0).unwrap(), 2);
     assert_eq!(vm.get_memory_byte(1).unwrap(), 1);
 }
@@ -288,7 +288,7 @@ fn vm_test_09() {
         vm.step();
     }
 
-    assert_eq!(vm.get_register(RegisterKind::REGHI), 4294967295);
+    assert_eq!(vm.get_register(RegisterKind::RegHi), 4294967295);
 }
 
 #[test]
@@ -303,7 +303,7 @@ fn vm_test_11() {
         vm.step();
     }
 
-    assert_eq!(vm.get_register(RegisterKind::REGPC), 21);
+    assert_eq!(vm.get_register(RegisterKind::RegPC), 21);
 }
 
 #[test]
@@ -318,5 +318,5 @@ fn vm_test_17() {
         vm.step();
     }
 
-    assert_eq!(vm.get_register(RegisterKind::REGPC), 5);
+    assert_eq!(vm.get_register(RegisterKind::RegPC), 5);
 }

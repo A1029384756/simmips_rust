@@ -22,7 +22,7 @@ pub fn parse_vm(tokens: TokenList) -> Result<VirtualMachine, String> {
     let mut parser: Parser = Parser::new(&tokens);
     select_mode(&mut parser);
 
-    if matches!(parser.mode, ParseMode::ERROR) {
+    if matches!(parser.mode, ParseMode::Error) {
         return Err(format!("Error:{}:section annotation", parser.get_line()));
     }
 
@@ -34,17 +34,17 @@ pub fn parse_vm(tokens: TokenList) -> Result<VirtualMachine, String> {
         };
 
         match parser.mode {
-            ParseMode::DATA => {
+            ParseMode::Data => {
                 if !parse_declaration(&mut parser) {
                     return Err(format!("Error:{}:invalid declaration", parser.get_line()));
                 }
             }
-            ParseMode::TEXT => {
+            ParseMode::Text => {
                 if !parse_instruction(&mut parser) {
                     return Err(format!("Error:{}:invalid instruction", parser.get_line()));
                 }
             }
-            ParseMode::ERROR => return Err(format!("Error:{}:unexpected EOF", parser.get_line())),
+            ParseMode::Error => return Err(format!("Error:{}:unexpected EOF", parser.get_line())),
         };
 
         parser.advance();
@@ -56,18 +56,18 @@ pub fn parse_vm(tokens: TokenList) -> Result<VirtualMachine, String> {
 fn parse_declaration(parser: &mut Parser) -> bool {
     if parse_constant(parser) {
         parser.advance();
-        return matches!(parser.peek().get_type(), TokenType::EOL);
+        matches!(parser.peek().get_type(), TokenType::Eol)
     } else if parse_label_declaration(parser) {
         parser.advance();
-        if matches!(parser.peek().get_type(), TokenType::EOL) {
+        if matches!(parser.peek().get_type(), TokenType::Eol) {
             return true;
         } else if parse_layout(parser) {
-            return matches!(parser.peek().get_type(), TokenType::EOL);
+            return matches!(parser.peek().get_type(), TokenType::Eol);
         } else {
             return false;
         }
     } else if parse_layout(parser) {
-        return matches!(parser.peek().get_type(), TokenType::EOL);
+        return matches!(parser.peek().get_type(), TokenType::Eol);
     } else {
         return false;
     }
@@ -78,12 +78,12 @@ fn parse_instruction(parser: &mut Parser) -> bool {
         parser.advance();
         if parse_operation(parser) {
             parser.advance();
-            return matches!(parser.peek().get_type(), TokenType::EOL);
+            return matches!(parser.peek().get_type(), TokenType::Eol);
         }
-        return matches!(parser.peek().get_type(), TokenType::EOL);
+        matches!(parser.peek().get_type(), TokenType::Eol)
     } else if parse_operation(parser) {
         parser.advance();
-        return matches!(parser.peek().get_type(), TokenType::EOL);
+        return matches!(parser.peek().get_type(), TokenType::Eol);
     } else {
         return false;
     }
@@ -91,16 +91,11 @@ fn parse_instruction(parser: &mut Parser) -> bool {
 
 fn parse_operation(parser: &mut Parser) -> bool {
     parser.instruction.set_line(parser.get_line());
-    if parse_data_movement(parser) {
-        parser.vm.add_instruction(parser.instruction.get_inst());
-        true
-    } else if parse_int_arithmetic(parser) {
-        parser.vm.add_instruction(parser.instruction.get_inst());
-        true
-    } else if parse_logical(parser) {
-        parser.vm.add_instruction(parser.instruction.get_inst());
-        true
-    } else if parse_control(parser) {
+    if parse_data_movement(parser)
+        || parse_int_arithmetic(parser)
+        || parse_logical(parser)
+        || parse_control(parser)
+    {
         parser.vm.add_instruction(parser.instruction.get_inst());
         true
     } else if parser.peek().get_value() == "nop" {
@@ -123,14 +118,12 @@ fn parse_control(parser: &mut Parser) -> bool {
                 return false;
             }
             parser.advance();
-            if parse_register(parser) {
-                parser.advance();
-            } else if parse_immediate(parser) {
+            if parse_register(parser) || parse_immediate(parser) {
                 parser.advance();
             } else {
                 return false;
             }
-            if !matches!(parser.peek().get_type(), TokenType::SEP) {
+            if !matches!(parser.peek().get_type(), TokenType::Sep) {
                 return false;
             }
             parser.advance();
@@ -176,7 +169,7 @@ fn parse_logical(parser: &mut Parser) -> bool {
 fn parse_int_arithmetic(parser: &mut Parser) -> bool {
     parser
         .instruction
-        .set_opcode(&parser.peek().get_value().to_owned());
+        .set_opcode(&parser.peek().get_value().to_string());
     match parser.peek().get_value() {
         "add" | "addu" | "sub" | "subu" | "mul" | "mulo" | "mulou" | "rem" | "remu" => {
             parser.advance();
@@ -208,7 +201,7 @@ fn parse_int_arithmetic(parser: &mut Parser) -> bool {
                 return false;
             }
             parser.advance();
-            if matches!(parser.peek().get_type(), TokenType::SEP) {
+            if matches!(parser.peek().get_type(), TokenType::Sep) {
                 parser.advance();
                 parse_register(parser) || parse_immediate(parser)
             } else {
@@ -225,23 +218,21 @@ fn parse_reg_sep(parser: &mut Parser) -> bool {
         return false;
     }
     parser.advance();
-    matches!(parser.peek().get_type(), TokenType::SEP)
+    matches!(parser.peek().get_type(), TokenType::Sep)
 }
 
 fn parse_memref(parser: &mut Parser) -> bool {
-    if parse_label_reference(parser) {
-        true
-    } else if parse_register(parser) {
-        true
-    } else if !matches!(parser.get(parser.pos + 1).get_type(), TokenType::OPENPAREN)
-        && parse_immediate(parser)
+    if parse_label_reference(parser)
+        || parse_register(parser)
+        || (!matches!(parser.get(parser.pos + 1).get_type(), TokenType::OpenParen)
+            && parse_immediate(parser))
     {
         true
     } else {
         if parse_offset(parser) {
             parser.advance();
         }
-        if !matches!(parser.peek().get_type(), TokenType::OPENPAREN) {
+        if !matches!(parser.peek().get_type(), TokenType::OpenParen) {
             return false;
         }
         parser.advance();
@@ -251,7 +242,7 @@ fn parse_memref(parser: &mut Parser) -> bool {
         }
         parser.advance();
 
-        matches!(parser.peek().get_type(), TokenType::CLOSEPAREN)
+        matches!(parser.peek().get_type(), TokenType::CloseParen)
     }
 }
 
@@ -259,7 +250,7 @@ fn parse_offset(parser: &mut Parser) -> bool {
     if layout_int_compat(".word", parser.peek().get_value()) {
         parser
             .instruction
-            .add_arg(Argument::OFFSET(parser.peek().get_value().parse().unwrap()));
+            .add_arg(Argument::Offset(parser.peek().get_value().parse().unwrap()));
         true
     } else {
         false
@@ -273,7 +264,7 @@ fn parse_label_reference(parser: &mut Parser) -> bool {
     {
         parser
             .instruction
-            .add_arg(Argument::LABEL(parser.peek().get_value().to_string()));
+            .add_arg(Argument::Label(parser.peek().get_value().to_string()));
         true
     } else {
         false
@@ -323,13 +314,13 @@ fn parse_immediate(parser: &mut Parser) -> bool {
         if layout_int_compat(".word", constant) {
             parser
                 .instruction
-                .add_arg(Argument::IMMEDIATE(constant.parse::<i64>().unwrap() as u32));
+                .add_arg(Argument::Immediate(constant.parse::<i64>().unwrap() as u32));
             true
         } else {
             false
         }
     } else if layout_int_compat(".word", parser.peek().get_value()) {
-        parser.instruction.add_arg(Argument::IMMEDIATE(
+        parser.instruction.add_arg(Argument::Immediate(
             parser.peek().get_value().parse::<i64>().unwrap() as u32,
         ));
         true
@@ -340,14 +331,14 @@ fn parse_immediate(parser: &mut Parser) -> bool {
 
 fn parse_register(parser: &mut Parser) -> bool {
     match get_valid_register(parser.peek().get_value()) {
-        Some(RegisterKind::REGHI)
-        | Some(RegisterKind::REGLO)
-        | Some(RegisterKind::REGPC)
+        Some(RegisterKind::RegHi)
+        | Some(RegisterKind::RegLo)
+        | Some(RegisterKind::RegPC)
         | None => false,
         Some(reg) => {
             parser
                 .instruction
-                .add_arg(Argument::REGISTER(reg.to_owned()));
+                .add_arg(Argument::Register(reg.to_owned()));
             true
         }
     }
@@ -360,13 +351,13 @@ fn select_mode(parser: &mut Parser) -> bool {
     }
 
     match (parser.peek().get_value(), parser.get(next_idx).get_type()) {
-        (".text", &TokenType::EOL) => {
-            parser.mode = ParseMode::TEXT;
+        (".text", &TokenType::Eol) => {
+            parser.mode = ParseMode::Text;
             parser.advance();
             parser.advance();
         }
-        (".data", &TokenType::EOL) => {
-            parser.mode = ParseMode::DATA;
+        (".data", &TokenType::Eol) => {
+            parser.mode = ParseMode::Data;
             parser.advance();
             parser.advance();
         }
@@ -383,7 +374,7 @@ fn parse_layout(parser: &mut Parser) -> bool {
         if !layout_int_compat(&layout, parser.peek().get_value()) {
             match parser.constants.get(parser.peek().get_value()) {
                 Some(constant) => {
-                    if !layout_int_compat(&layout, &constant) {
+                    if !layout_int_compat(&layout, constant) {
                         return false;
                     }
                     parser.vm.add_data(&layout, constant);
@@ -397,11 +388,11 @@ fn parse_layout(parser: &mut Parser) -> bool {
         }
         parser.advance();
         if layout == ".space" {
-            return matches!(parser.peek().get_type(), TokenType::EOL);
+            return matches!(parser.peek().get_type(), TokenType::Eol);
         }
 
-        while !parser.at_end() && !matches!(parser.peek().get_type(), TokenType::EOL) {
-            if !matches!(parser.peek().get_type(), TokenType::SEP) {
+        while !parser.at_end() && !matches!(parser.peek().get_type(), TokenType::Eol) {
+            if !matches!(parser.peek().get_type(), TokenType::Sep) {
                 return false;
             }
             parser.advance();
@@ -413,7 +404,7 @@ fn parse_layout(parser: &mut Parser) -> bool {
                 .add_data(&layout, &parser.peek().get_value().to_string());
             parser.advance();
         }
-        return true;
+        true
     } else if parse_string_layout(parser) {
         let layout: String = parser.peek().get_value().to_string();
         parser.advance();
@@ -424,7 +415,7 @@ fn parse_layout(parser: &mut Parser) -> bool {
             .vm
             .add_data(&layout, &parser.get(parser.pos - 1).get_value().to_string());
         parser.advance();
-        return matches!(parser.peek().get_type(), TokenType::EOL);
+        return matches!(parser.peek().get_type(), TokenType::Eol);
     } else {
         return false;
     }
@@ -443,24 +434,24 @@ fn parse_label_declaration(parser: &mut Parser) -> bool {
     }
 
     match parser.mode {
-        ParseMode::DATA => {
-            parser.vm.insert_label(LabelType::DATA(label_trunc));
+        ParseMode::Data => {
+            parser.vm.insert_label(LabelType::Data(label_trunc));
             true
         }
-        ParseMode::TEXT => {
-            parser.vm.insert_label(LabelType::INSTRUCTION(label_trunc));
+        ParseMode::Text => {
+            parser.vm.insert_label(LabelType::Instruction(label_trunc));
             true
         }
-        ParseMode::ERROR => false,
+        ParseMode::Error => false,
     }
 }
 
 fn parse_string(parser: &mut Parser) -> bool {
-    if !matches!(parser.peek().get_type(), TokenType::STRINGDELIM) {
+    if !matches!(parser.peek().get_type(), TokenType::StringDelim) {
         return false;
     }
     parser.advance();
-    if !matches!(parser.peek().get_type(), TokenType::STRING) {
+    if !matches!(parser.peek().get_type(), TokenType::String) {
         return false;
     }
     if !parser.peek().get_value().is_ascii() {
@@ -482,7 +473,7 @@ fn parse_string_layout(parser: &Parser) -> bool {
 }
 
 fn layout_int_compat(layout: &str, value: &str) -> bool {
-    let signed: bool = value.starts_with("+") || value.starts_with("-");
+    let signed: bool = value.starts_with('+') || value.starts_with('-');
     match value.parse::<i64>() {
         Ok(val) => match layout {
             ".word" => {
@@ -535,7 +526,7 @@ fn parse_constant(parser: &mut Parser) -> bool {
     let const_name: String = parser.peek().get_value().to_string();
     parser.advance();
 
-    if !matches!(parser.peek().get_type(), TokenType::EQUAL) {
+    if !matches!(parser.peek().get_type(), TokenType::Equal) {
         return false;
     }
     parser.advance();
@@ -567,9 +558,9 @@ struct Parser {
 
 #[derive(Debug)]
 enum ParseMode {
-    DATA,
-    TEXT,
-    ERROR,
+    Data,
+    Text,
+    Error,
 }
 
 impl Parser {
@@ -580,7 +571,7 @@ impl Parser {
             pos: 0,
             labels: Vec::new(),
             constants: BTreeMap::new(),
-            mode: ParseMode::ERROR,
+            mode: ParseMode::Error,
             instruction: InstructionBuilder::new(),
         };
 
@@ -589,20 +580,17 @@ impl Parser {
                 continue;
             }
 
-            match (
-                token.get_value().chars().next(),
-                token.get_value().chars().last(),
-            ) {
-                (Some('A'..='z'), Some(':')) => {
-                    if token.get_value()[0..token.get_value().len() - 1]
-                        .chars()
-                        .all(char::is_alphanumeric)
-                    {
-                        p.labels
-                            .push(token.get_value()[0..token.get_value().len() - 1].to_string())
-                    }
+            if let (Some('A'..='z'), Some(':')) = (
+                            token.get_value().chars().next(),
+                            token.get_value().chars().last(),
+                        ) {
+                if token.get_value()[0..token.get_value().len() - 1]
+                    .chars()
+                    .all(char::is_alphanumeric)
+                {
+                    p.labels
+                        .push(token.get_value()[0..token.get_value().len() - 1].to_string())
                 }
-                (_, _) => (),
             };
         }
 

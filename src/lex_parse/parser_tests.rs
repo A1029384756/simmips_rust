@@ -48,7 +48,7 @@ fn data_parse() {
         assert!(matches!(parse(tokenize(input).unwrap()), Err(..)));
     }
     {
-        let input: &str = &String::new();
+        let input: &str = "";
         assert!(matches!(parse(tokenize(input).unwrap()), Err(..)));
     }
     {
@@ -172,11 +172,8 @@ fn failing_parse_files() {
         let mut test_path = path.clone();
         test_path.push(format!("test0{val}.asm"));
         let data = &std::fs::read_to_string(test_path).unwrap();
-        match tokenize(data) {
-            Ok(tokens) => {
-                assert!(matches!(parse(tokens), Err(..)))
-            },
-            Err(_) => (),
+        if let Ok(tokens) = tokenize(data) {
+            assert!(matches!(parse(tokens), Err(..)))
         }
     });
 }

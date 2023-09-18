@@ -5,14 +5,14 @@ use std::vec::Vec;
 #[derive(Debug, Default, PartialEq, Clone)]
 pub enum TokenType {
     #[default]
-    STRING,
-    EOL,
-    SEP,
-    OPENPAREN,
-    CLOSEPAREN,
-    STRINGDELIM,
-    EQUAL,
-    ERROR,
+    String,
+    Eol,
+    Sep,
+    OpenParen,
+    CloseParen,
+    StringDelim,
+    Equal,
+    Error,
 }
 
 impl fmt::Display for TokenType {

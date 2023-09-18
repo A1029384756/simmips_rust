@@ -15,8 +15,8 @@ fn tokenize_test() {
 
     let result: TokenList = tokenize(data).unwrap();
 
-    assert_eq!(result.last().unwrap().get_type(), &TokenType::EOL);
-    assert_eq!(result.first().unwrap().get_type(), &TokenType::STRING);
+    assert_eq!(result.last().unwrap().get_type(), &TokenType::Eol);
+    assert_eq!(result.first().unwrap().get_type(), &TokenType::String);
     assert_eq!(result.first().unwrap().get_line(), &2);
     assert_eq!(result.len(), 31);
 }
@@ -26,9 +26,9 @@ fn tokenize_edge_cases() {
     {
         let data: &str = "string = 100\n\"\"data";
         let result: TokenList = tokenize(data).unwrap();
-        assert_eq!(result.last().unwrap().get_type(), &TokenType::EOL);
+        assert_eq!(result.last().unwrap().get_type(), &TokenType::Eol);
         assert_eq!(result.len(), 9);
-        assert_eq!(result.get(5).unwrap().get_type(), &TokenType::STRING);
+        assert_eq!(result.get(5).unwrap().get_type(), &TokenType::String);
         assert_eq!(result.get(5).unwrap().get_value(), "");
     }
     {
@@ -55,7 +55,7 @@ fn tokenize_edge_cases() {
         let data: &str = "\"( #\"";
         let result: TokenList = tokenize(data).unwrap();
         assert_eq!(result.len(), 4);
-        assert_eq!(result.last().unwrap().get_type(), &TokenType::EOL);
+        assert_eq!(result.last().unwrap().get_type(), &TokenType::Eol);
     }
     {
         let data: &str = "\"";
@@ -77,7 +77,7 @@ fn file_tokenize_tests() {
 
         let data: &str = &std::fs::read_to_string(path).unwrap();
         let result: TokenList = tokenize(data).unwrap();
-        assert!(result.len() > 0);
+        assert!(!result.is_empty());
     }
     {
         let mut path: std::path::PathBuf = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -93,11 +93,11 @@ fn file_tokenize_tests() {
 
         let data: &str = &std::fs::read_to_string(path).unwrap();
         let result: TokenList = tokenize(data).unwrap();
-        assert_ne!(result.last().unwrap().get_type(), &TokenType::ERROR);
-        assert!(result.len() > 0);
-        assert_eq!(result.first().unwrap().get_type(), &TokenType::STRING);
+        assert_ne!(result.last().unwrap().get_type(), &TokenType::Error);
+        assert!(!result.is_empty());
+        assert_eq!(result.first().unwrap().get_type(), &TokenType::String);
         assert_eq!(result.first().unwrap().get_line(), &6);
-        assert_eq!(result.last().unwrap().get_type(), &TokenType::EOL);
+        assert_eq!(result.last().unwrap().get_type(), &TokenType::Eol);
         assert_eq!(result.last().unwrap().get_line(), &26);
         assert_eq!(result.len(), 69);
     }

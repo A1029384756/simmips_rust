@@ -49,7 +49,7 @@ fn get_valid_address(addr: &str) -> Option<u32> {
                 Ok(val) => Some(val),
                 Err(_) => None,
             },
-            false => match u32::from_str_radix(&addr[1..], 10) {
+            false => match str::parse::<u32>(&addr[1..]) {
                 Ok(val) => Some(val),
                 Err(_) => None,
             },
@@ -75,7 +75,7 @@ fn handle_step(_: &str, vm: &mut VirtualMachine) {
     if vm.is_error() {
         println!("{}", vm.get_error());
     } else {
-        println!("0x{:08x}", vm.get_register(RegisterKind::REGPC));
+        println!("0x{:08x}", vm.get_register(RegisterKind::RegPC));
     }
 }
 

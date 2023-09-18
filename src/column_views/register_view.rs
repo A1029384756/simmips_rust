@@ -8,13 +8,13 @@ use relm4::{gtk::traits::WidgetExt, prelude::*};
 
 use crate::column_views::grid_cell::{Entry, GridCell};
 
-const REG_NUMBERS: [&'static str; 35] = [
+const REG_NUMBERS: [&str; 35] = [
     "", "", "", "$0", "$1", "$2", "$3", "$4", "$5", "$6", "$7", "$8", "$9", "$10", "$11", "$12",
     "$13", "$14", "$15", "$16", "$17", "$18", "$19", "$20", "$21", "$22", "$23", "$24", "$25",
     "$26", "$27", "$28", "$29", "$30", "$31",
 ];
 
-const REG_ALIAS: [&'static str; 35] = [
+const REG_ALIAS: [&str; 35] = [
     "$pc", "$hi", "$lo", "$zero", "$at", "$v0", "$v1", "$a0", "$a1", "$a2", "$a3", "$t0", "$t1",
     "$t2", "$t3", "$t4", "$t5", "$t6", "$t7", "$s0", "$s1", "$s2", "$s3", "$s4", "$s5", "$s6",
     "$s7", "$t8", "$t9", "$k0", "$k1", "$gp", "$sp", "$fp", "$ra",
@@ -50,8 +50,8 @@ impl SimpleComponent for RegisterView {
 
         (0..35).for_each(|idx| {
             register_store.append(&BoxedAnyObject::new(Row {
-                reg_num: format!("{}", REG_NUMBERS[idx]),
-                reg_alias: format!("{}", REG_ALIAS[idx]),
+                reg_num: REG_NUMBERS[idx].to_string(),
+                reg_alias: REG_ALIAS[idx].to_string(),
                 reg_val: format!("0x{:08x}", 0),
             }))
         });
@@ -149,8 +149,8 @@ impl SimpleComponent for RegisterView {
 
                 front.iter().enumerate().for_each(|(idx, val)| {
                     register_store.append(&BoxedAnyObject::new(Row {
-                        reg_num: format!("{}", REG_NUMBERS[idx]),
-                        reg_alias: format!("{}", REG_ALIAS[idx]),
+                        reg_num: REG_NUMBERS[idx].to_string(),
+                        reg_alias: REG_ALIAS[idx].to_string(),
                         reg_val: format!("0x{:08x}", val),
                     }))
                 });
