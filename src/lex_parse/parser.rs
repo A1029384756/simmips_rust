@@ -65,7 +65,7 @@ fn parse_declaration(parser: &mut Parser) -> bool {
             matches!(parser.peek().get_type(), TokenType::Eol)
         } else {
             false
-        }
+        };
     } else if parse_layout(parser) {
         return matches!(parser.peek().get_type(), TokenType::Eol);
     } else {
@@ -108,9 +108,7 @@ fn parse_operation(parser: &mut Parser) -> bool {
 }
 
 fn parse_control(parser: &mut Parser) -> bool {
-    parser
-        .instruction
-        .set_opcode(&parser.peek().get_value());
+    parser.instruction.set_opcode(&parser.peek().get_value());
     match parser.peek().get_value().as_str() {
         "beq" | "bne" | "blt" | "ble" | "bgt" | "bge" => {
             parser.advance();
@@ -138,9 +136,7 @@ fn parse_control(parser: &mut Parser) -> bool {
 }
 
 fn parse_logical(parser: &mut Parser) -> bool {
-    parser
-        .instruction
-        .set_opcode(&parser.peek().get_value());
+    parser.instruction.set_opcode(&parser.peek().get_value());
     match parser.peek().get_value().as_str() {
         "and" | "nor" | "or" | "xor" => {
             parser.advance();
@@ -167,9 +163,7 @@ fn parse_logical(parser: &mut Parser) -> bool {
 }
 
 fn parse_int_arithmetic(parser: &mut Parser) -> bool {
-    parser
-        .instruction
-        .set_opcode(&parser.peek().get_value());
+    parser.instruction.set_opcode(&parser.peek().get_value());
     match parser.peek().get_value().as_str() {
         "add" | "addu" | "sub" | "subu" | "mul" | "mulo" | "mulou" | "rem" | "remu" => {
             parser.advance();
@@ -350,7 +344,10 @@ fn select_mode(parser: &mut Parser) -> bool {
         return false;
     }
 
-    match (parser.peek().get_value().as_str(), parser.get(next_idx).get_type()) {
+    match (
+        parser.peek().get_value().as_str(),
+        parser.get(next_idx).get_type(),
+    ) {
         (".text", &TokenType::Eol) => {
             parser.mode = ParseMode::Text;
             parser.advance();
