@@ -77,6 +77,13 @@ impl SimpleComponent for MemoryView {
             c.set_expand(true);
         });
 
+        (0..1024).for_each(|idx| {
+            view_wrapper.append(MemoryRow {
+                addr: idx,
+                value: 0,
+            });
+        });
+
         let model = MemoryView { view_wrapper };
 
         let my_view = &model.view_wrapper.view;
