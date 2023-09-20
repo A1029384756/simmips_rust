@@ -54,8 +54,8 @@ impl Token {
         &self.line_number
     }
 
-    pub fn get_value(&self) -> &str {
-        &self.token
+    pub fn get_value(&self) -> String {
+        self.token.clone()
     }
 }
 

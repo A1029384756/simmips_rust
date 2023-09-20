@@ -27,7 +27,7 @@ pub fn parse_vm(tokens: TokenList) -> Result<VirtualMachine, String> {
     }
 
     while select_mode(&mut parser) {
-        match parser.peek().get_value() {
+        match parser.peek().get_value().as_str() {
             ".data" => continue,
             ".text" => continue,
             _ => (),
@@ -59,12 +59,12 @@ fn parse_declaration(parser: &mut Parser) -> bool {
         matches!(parser.peek().get_type(), TokenType::Eol)
     } else if parse_label_declaration(parser) {
         parser.advance();
-        if matches!(parser.peek().get_type(), TokenType::Eol) {
-            return true;
+        return if matches!(parser.peek().get_type(), TokenType::Eol) {
+            true
         } else if parse_layout(parser) {
-            return matches!(parser.peek().get_type(), TokenType::Eol);
+            matches!(parser.peek().get_type(), TokenType::Eol)
         } else {
-            return false;
+            false
         }
     } else if parse_layout(parser) {
         return matches!(parser.peek().get_type(), TokenType::Eol);
@@ -110,8 +110,8 @@ fn parse_operation(parser: &mut Parser) -> bool {
 fn parse_control(parser: &mut Parser) -> bool {
     parser
         .instruction
-        .set_opcode(&parser.peek().get_value().to_string());
-    match parser.peek().get_value() {
+        .set_opcode(&parser.peek().get_value());
+    match parser.peek().get_value().as_str() {
         "beq" | "bne" | "blt" | "ble" | "bgt" | "bge" => {
             parser.advance();
             if !parse_reg_sep(parser) {
@@ -140,8 +140,8 @@ fn parse_control(parser: &mut Parser) -> bool {
 fn parse_logical(parser: &mut Parser) -> bool {
     parser
         .instruction
-        .set_opcode(&parser.peek().get_value().to_string());
-    match parser.peek().get_value() {
+        .set_opcode(&parser.peek().get_value());
+    match parser.peek().get_value().as_str() {
         "and" | "nor" | "or" | "xor" => {
             parser.advance();
             if !parse_reg_sep(parser) {
@@ -169,8 +169,8 @@ fn parse_logical(parser: &mut Parser) -> bool {
 fn parse_int_arithmetic(parser: &mut Parser) -> bool {
     parser
         .instruction
-        .set_opcode(&parser.peek().get_value().to_string());
-    match parser.peek().get_value() {
+        .set_opcode(&parser.peek().get_value());
+    match parser.peek().get_value().as_str() {
         "add" | "addu" | "sub" | "subu" | "mul" | "mulo" | "mulou" | "rem" | "remu" => {
             parser.advance();
             if !parse_reg_sep(parser) {
@@ -247,7 +247,7 @@ fn parse_memref(parser: &mut Parser) -> bool {
 }
 
 fn parse_offset(parser: &mut Parser) -> bool {
-    if layout_int_compat(".word", parser.peek().get_value()) {
+    if layout_int_compat(".word", parser.peek().get_value().as_str()) {
         parser
             .instruction
             .add_arg(Argument::Offset(parser.peek().get_value().parse().unwrap()));
@@ -276,7 +276,7 @@ fn parse_data_movement(parser: &mut Parser) -> bool {
         .instruction
         .set_opcode(&parser.peek().get_value().to_string());
 
-    match parser.peek().get_value() {
+    match parser.peek().get_value().as_str() {
         "mfhi" | "mflo" | "mthi" | "mtlo" => {
             parser.advance();
             parse_register(parser)
@@ -310,7 +310,7 @@ fn parse_data_movement(parser: &mut Parser) -> bool {
 }
 
 fn parse_immediate(parser: &mut Parser) -> bool {
-    if let Some(constant) = parser.constants.get(parser.peek().get_value()) {
+    if let Some(constant) = parser.constants.get(parser.peek().get_value().as_str()) {
         if layout_int_compat(".word", constant) {
             parser
                 .instruction
@@ -319,7 +319,7 @@ fn parse_immediate(parser: &mut Parser) -> bool {
         } else {
             false
         }
-    } else if layout_int_compat(".word", parser.peek().get_value()) {
+    } else if layout_int_compat(".word", parser.peek().get_value().as_str()) {
         parser.instruction.add_arg(Argument::Immediate(
             parser.peek().get_value().parse::<i64>().unwrap() as u32,
         ));
@@ -330,7 +330,7 @@ fn parse_immediate(parser: &mut Parser) -> bool {
 }
 
 fn parse_register(parser: &mut Parser) -> bool {
-    match get_valid_register(parser.peek().get_value()) {
+    match get_valid_register(parser.peek().get_value().as_str()) {
         Some(RegisterKind::RegHi)
         | Some(RegisterKind::RegLo)
         | Some(RegisterKind::RegPC)
@@ -350,7 +350,7 @@ fn select_mode(parser: &mut Parser) -> bool {
         return false;
     }
 
-    match (parser.peek().get_value(), parser.get(next_idx).get_type()) {
+    match (parser.peek().get_value().as_str(), parser.get(next_idx).get_type()) {
         (".text", &TokenType::Eol) => {
             parser.mode = ParseMode::Text;
             parser.advance();
@@ -371,8 +371,8 @@ fn parse_layout(parser: &mut Parser) -> bool {
     if parse_int_layout(parser) {
         let layout: String = parser.peek().get_value().to_string();
         parser.advance();
-        if !layout_int_compat(&layout, parser.peek().get_value()) {
-            match parser.constants.get(parser.peek().get_value()) {
+        if !layout_int_compat(&layout, parser.peek().get_value().as_str()) {
+            match parser.constants.get(parser.peek().get_value().as_str()) {
                 Some(constant) => {
                     if !layout_int_compat(&layout, constant) {
                         return false;
@@ -396,7 +396,7 @@ fn parse_layout(parser: &mut Parser) -> bool {
                 return false;
             }
             parser.advance();
-            if !layout_int_compat(&layout, parser.peek().get_value()) {
+            if !layout_int_compat(&layout, parser.peek().get_value().as_str()) {
                 return false;
             }
             parser
@@ -463,13 +463,13 @@ fn parse_string(parser: &mut Parser) -> bool {
 
 fn parse_int_layout(parser: &Parser) -> bool {
     matches!(
-        parser.peek().get_value(),
+        parser.peek().get_value().as_str(),
         ".word" | ".byte" | ".half" | ".space"
     )
 }
 
 fn parse_string_layout(parser: &Parser) -> bool {
-    matches!(parser.peek().get_value(), ".ascii" | ".asciiz")
+    matches!(parser.peek().get_value().as_str(), ".ascii" | ".asciiz")
 }
 
 fn layout_int_compat(layout: &str, value: &str) -> bool {
@@ -531,7 +531,7 @@ fn parse_constant(parser: &mut Parser) -> bool {
     }
     parser.advance();
 
-    match parser.constants.get(parser.peek().get_value()) {
+    match parser.constants.get(parser.peek().get_value().as_str()) {
         Some(..) => true,
         None => match parser.peek().get_value().parse::<i64>() {
             Ok(const_val) => {
