@@ -1,4 +1,5 @@
 mod column_views;
+mod info_dialog;
 mod lex_parse;
 mod utils;
 
@@ -6,6 +7,8 @@ use std::convert::identity;
 use std::path::PathBuf;
 use std::sync::mpsc;
 use std::sync::mpsc::Sender;
+
+use info_dialog::*;
 
 use column_views::memory_view::{MemoryMsg, MemoryView};
 use column_views::register_view::{RegMsg, RegisterView};
@@ -21,11 +24,11 @@ use utils::highlight_line;
 
 struct App {
     open_dialog: Controller<OpenDialog>,
+    info_dialog: Controller<InfoDialog>,
     vm: VirtualMachine,
     asm_view_buffer: gtk::TextBuffer,
     register_view: Controller<RegisterView>,
     memory_view: Controller<MemoryView>,
-    message: Option<String>,
     app_to_thread: Option<Sender<()>>,
     vm_running: bool,
 }
@@ -40,7 +43,6 @@ pub enum Msg {
     Break,
     ResetSimulation,
     ShowMessage(String),
-    ResetMessage,
 }
 
 #[derive(Debug)]
@@ -55,21 +57,6 @@ impl Component for App {
     type Output = ();
     type Init = ();
 
-    fn post_view() {
-        if let Some(text) = &model.message {
-            let dialog = gtk::MessageDialog::builder()
-                .text(text)
-                .use_markup(true)
-                .transient_for(&widgets.root)
-                .modal(true)
-                .buttons(gtk::ButtonsType::Ok)
-                .build();
-            dialog.connect_response(|dialog, _| dialog.destroy());
-            dialog.show();
-            sender.input(Msg::ResetMessage);
-        }
-    }
-
     fn init(
         _: Self::Init,
         root: &Self::Root,
@@ -82,6 +69,11 @@ impl Component for App {
                 OpenDialogResponse::Accept(path) => Msg::OpenResponse(path),
                 OpenDialogResponse::Cancel => Msg::Ignore,
             });
+
+        let info_dialog = InfoDialog::builder()
+            .transient_for(root)
+            .launch(())
+            .forward(sender.input_sender(), |_| Msg::Ignore);
 
         let register_view: Controller<RegisterView> = RegisterView::builder()
             .launch(())
@@ -102,11 +94,11 @@ impl Component for App {
 
         let model = App {
             open_dialog,
+            info_dialog,
             vm: VirtualMachine::new(),
             asm_view_buffer: gtk::TextBuffer::new(Some(&tag_table)),
             register_view,
             memory_view,
-            message: None,
             app_to_thread: None,
             vm_running: false,
         };
@@ -116,7 +108,7 @@ impl Component for App {
         ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, msg: Msg, sender: ComponentSender<Self>, _root: &Self::Root) {
+    fn update(&mut self, msg: Msg, sender: ComponentSender<Self>, root: &Self::Root) {
         match msg {
             Msg::OpenRequest => self.open_dialog.emit(OpenDialogMsg::Open),
             Msg::OpenResponse(path) => match std::fs::read_to_string(path) {
@@ -175,10 +167,12 @@ impl Component for App {
                 None => {}
             },
             Msg::ShowMessage(message) => {
-                self.message = Some(message);
-            }
-            Msg::ResetMessage => {
-                self.message = None;
+                self.info_dialog = InfoDialog::builder()
+                    .transient_for(root)
+                    .launch(())
+                    .forward(sender.input_sender(), |_| Msg::Ignore);
+
+                self.info_dialog.emit(DialogMsg::Show(message));
             }
             Msg::ResetSimulation => {
                 let contents = self
