@@ -1,5 +1,5 @@
 #[cfg(test)]
-use crate::lex_parse::{
+use super::{
     lexer::tokenize,
     token::{TokenList, TokenType},
 };

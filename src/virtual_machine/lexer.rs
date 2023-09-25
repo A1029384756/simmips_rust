@@ -1,4 +1,4 @@
-use crate::lex_parse::token::*;
+use super::token::*;
 use std::str::Chars;
 
 struct Tokenizer {

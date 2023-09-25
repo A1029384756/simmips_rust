@@ -1,6 +1,6 @@
 #[cfg(test)]
 use {
-    crate::lex_parse::{
+    super::{
         lexer::tokenize,
         parser::parse_vm,
         virtual_machine_interface::{RegisterKind, VirtualMachineInterface},

@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::lex_parse::vm_defs::{Argument, LabelType};
+use super::vm_defs::{Argument, LabelType};
 
 use super::{
     token::Token,

@@ -1,4 +1,4 @@
-use crate::lex_parse::virtual_machine_interface::RegisterKind;
+use super::virtual_machine_interface::RegisterKind;
 
 pub fn get_valid_register(reg: &str) -> Option<RegisterKind> {
     match reg {
