@@ -1,15 +1,15 @@
 mod virtual_machine;
 use crate::virtual_machine::util::get_valid_register;
-use virtual_machine::virtual_machine_interface::RegisterKind;
-use virtual_machine::virtual_machine_interface::VirtualMachineInterface;
-use virtual_machine::virtualmachine::VirtualMachine;
-use virtual_machine::{lexer::tokenize, parser::parse_vm};
 use std::collections::HashMap;
 use std::env;
 use std::io::stdin;
 use std::io::stdout;
 use std::io::Write;
 use std::process::ExitCode;
+use virtual_machine::virtual_machine_interface::RegisterKind;
+use virtual_machine::virtual_machine_interface::VirtualMachineInterface;
+use virtual_machine::virtualmachine::VirtualMachine;
+use virtual_machine::{lexer::tokenize, parser::parse_vm};
 
 struct Repl {
     events: HashMap<String, fn(&str, &mut VirtualMachine)>,

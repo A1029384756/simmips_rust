@@ -1,7 +1,7 @@
 mod column_views;
 mod info_dialog;
-mod virtual_machine;
 mod utils;
+mod virtual_machine;
 
 use std::convert::identity;
 use std::path::PathBuf;
@@ -13,14 +13,14 @@ use info_dialog::*;
 use column_views::memory_view::{MemoryMsg, MemoryView};
 use column_views::register_view::{RegMsg, RegisterView};
 use gtk::prelude::*;
-use virtual_machine::lexer::tokenize;
-use virtual_machine::parser::parse_vm;
-use virtual_machine::virtual_machine_interface::VirtualMachineInterface;
-use virtual_machine::virtualmachine::VirtualMachine;
 use num_traits::FromPrimitive;
 use relm4::prelude::*;
 use relm4_components::open_dialog::*;
 use utils::highlight_line;
+use virtual_machine::lexer::tokenize;
+use virtual_machine::parser::parse_vm;
+use virtual_machine::virtual_machine_interface::VirtualMachineInterface;
+use virtual_machine::virtualmachine::VirtualMachine;
 
 struct App {
     open_dialog: Controller<OpenDialog>,
