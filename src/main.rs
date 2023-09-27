@@ -1,5 +1,4 @@
-mod column_views;
-mod info_dialog;
+mod ui_components;
 mod utils;
 mod virtual_machine;
 
@@ -8,14 +7,14 @@ use std::path::PathBuf;
 use std::sync::mpsc;
 use std::sync::mpsc::Sender;
 
-use info_dialog::*;
+use ui_components::info_dialog::*;
 
-use column_views::memory_view::{MemoryMsg, MemoryView};
-use column_views::register_view::{RegMsg, RegisterView};
 use gtk::prelude::*;
 use num_traits::FromPrimitive;
 use relm4::prelude::*;
 use relm4_components::open_dialog::*;
+use ui_components::column_views::memory_view::{MemoryMsg, MemoryView};
+use ui_components::column_views::register_view::{RegMsg, RegisterView};
 use utils::highlight_line;
 use virtual_machine::lexer::tokenize;
 use virtual_machine::parser::parse_vm;
