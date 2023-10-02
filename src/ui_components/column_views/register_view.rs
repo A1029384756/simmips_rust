@@ -124,16 +124,19 @@ impl SimpleComponent for RegisterView {
         match msg {
             RegMsg::UpdateRegisters(new_registers) => {
                 self.view_wrapper.clear();
-                new_registers
-                    .into_iter()
-                    .enumerate()
-                    .for_each(|(idx, val)| {
-                        self.view_wrapper.append(RegisterRow {
-                            reg_num: REG_NUMBERS[idx],
-                            reg_alias: REG_ALIAS[idx],
-                            reg_val: val,
-                        });
+                let mut back = new_registers[..32].to_owned();
+                let mut front = new_registers[32..].to_owned();
+
+                front.reverse();
+                front.append(&mut back);
+
+                front.iter().enumerate().for_each(|(idx, val)| {
+                    self.view_wrapper.append(RegisterRow {
+                        reg_num: REG_NUMBERS[idx],
+                        reg_alias: REG_ALIAS[idx],
+                        reg_val: *val,
                     });
+                });
             }
         }
     }
