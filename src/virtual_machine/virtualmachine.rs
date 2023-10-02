@@ -788,7 +788,7 @@ impl VirtualMachineInterface for VirtualMachine {
 }
 
 impl VirtualMachine {
-    pub(crate) fn new() -> VirtualMachine {
+    pub fn new() -> VirtualMachine {
         VirtualMachine {
             error_state: false,
             error_message: String::new(),

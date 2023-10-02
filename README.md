@@ -7,7 +7,7 @@
 
 ### MacOS
 1. Install [rustup](https://rustup.rs/)
-2. Install **gtk4** and **libadwaita** with `brew install gtk4 libadwaita`
+2. Install **gtk4** and **libadwaita** with `brew install gtk4 libadwaita pkg-config`
 3. Run `cargo build`
 
 ### Windows 
