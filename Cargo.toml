@@ -9,6 +9,7 @@ num-derive = "0.4.0"
 num-traits = "0.2.15"
 relm4 = { version = "0.7.0-beta.1", features = ["libadwaita", "gnome_43"] }
 relm4-components = "0.7.0-beta.1"
+mips_assembler = { git = "https://github.com/A1029384756/mips_assembler", branch = "master" }
 
 [[bin]]
 name = "simmips_gui"
