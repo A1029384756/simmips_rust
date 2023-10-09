@@ -2,10 +2,20 @@ use super::virtual_machine_interface::{RegisterKind, VirtualMachineInterface};
 use super::vm_defs::{Argument, Instruction, LabelType, Labels, Opcode};
 use std::num::Wrapping;
 
-#[derive(PartialEq)]
-enum PredictorState { StrongNot, WeakNot, WeakTake, StrongTake }
-#[derive(PartialEq)]
-enum PredictorStrategy { Always, Never, TwoBit, OneBit }
+#[derive(PartialEq, Clone, Copy)]
+enum PredictorState {
+    StrongNot,
+    WeakNot,
+    WeakTake,
+    StrongTake,
+}
+#[derive(PartialEq, Clone, Copy)]
+enum PredictorStrategy {
+    Always,
+    Never,
+    TwoBit,
+    OneBit,
+}
 
 #[derive(Debug, Clone)]
 pub struct VirtualMachine {
@@ -29,37 +39,27 @@ pub struct BranchPredictor {
 
 impl BranchPredictor {
     fn update(&mut self, correct: bool) {
-        if self.strategy == PredictorStrategy::OneBit {
-            if correct && self.state == PredictorState::WeakNot {
-                self.state = PredictorState::WeakTake
-            } else if !correct && self.state == PredictorState::WeakTake {
-                self.state = PredictorState::WeakNot
+        self.state = match (self.strategy, correct, self.state) {
+            (PredictorStrategy::OneBit, true, PredictorState::WeakNot) => PredictorState::WeakTake,
+            (PredictorStrategy::OneBit, false, PredictorState::WeakTake) => PredictorState::WeakNot,
+            (PredictorStrategy::TwoBit, true, PredictorState::StrongNot) => PredictorState::WeakNot,
+            (PredictorStrategy::TwoBit, true, PredictorState::WeakNot) => {
+                PredictorState::StrongTake
             }
-        } else if self.strategy == PredictorStrategy::TwoBit {
-            if correct {
-                self.state = match self.state {
-                    PredictorState::StrongNot => PredictorState::WeakNot,
-                    PredictorState::WeakNot => PredictorState::WeakTake,
-                    PredictorState::WeakTake => PredictorState::StrongTake,
-                    PredictorState::StrongTake => PredictorState::StrongTake,
-                }
-            } else {
-                self.state = match self.state {
-                    PredictorState::StrongNot => PredictorState::StrongNot,
-                    PredictorState::WeakNot => PredictorState::StrongNot,
-                    PredictorState::WeakTake => PredictorState::WeakNot,
-                    PredictorState::StrongTake => PredictorState::WeakTake,
-                }
+            (PredictorStrategy::TwoBit, true, PredictorState::WeakTake) => {
+                PredictorState::StrongTake
             }
-        }
+            (PredictorStrategy::TwoBit, false, PredictorState::WeakNot) => PredictorState::WeakTake,
+            (PredictorStrategy::TwoBit, false, PredictorState::WeakTake) => PredictorState::WeakNot,
+            (PredictorStrategy::TwoBit, false, PredictorState::StrongTake) => {
+                PredictorState::WeakTake
+            }
+            _ => self.state,
+        };
     }
 
     fn predict(self) -> bool {
-        return if self.state == PredictorState::WeakTake || self.state == PredictorState::StrongTake {
-            true
-        } else {
-            false
-        }
+        matches!(self.state, PredictorState::WeakTake | PredictorState::StrongTake)
     }
 }
 
