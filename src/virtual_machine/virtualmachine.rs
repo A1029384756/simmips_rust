@@ -2,6 +2,11 @@ use super::virtual_machine_interface::{RegisterKind, VirtualMachineInterface};
 use super::vm_defs::{Argument, Instruction, LabelType, Labels, Opcode};
 use std::num::Wrapping;
 
+#[derive(PartialEq)]
+enum PredictorState { StrongNot, WeakNot, WeakTake, StrongTake }
+#[derive(PartialEq)]
+enum PredictorStrategy { Always, Never, TwoBit, OneBit }
+
 #[derive(Debug, Clone)]
 pub struct VirtualMachine {
     error_state: bool,
@@ -15,6 +20,47 @@ pub struct VirtualMachine {
     data_memory: Vec<u8>,
     instruction_memory: Vec<Instruction>,
     labels: Labels,
+}
+
+pub struct BranchPredictor {
+    state: PredictorState,
+    strategy: PredictorStrategy,
+}
+
+impl BranchPredictor {
+    fn update(&mut self, correct: bool) {
+        if self.strategy == PredictorStrategy::OneBit {
+            if correct && self.state == PredictorState::WeakNot {
+                self.state = PredictorState::WeakTake
+            } else if !correct && self.state == PredictorState::WeakTake {
+                self.state = PredictorState::WeakNot
+            }
+        } else if self.strategy == PredictorStrategy::TwoBit {
+            if correct {
+                self.state = match self.state {
+                    PredictorState::StrongNot => PredictorState::WeakNot,
+                    PredictorState::WeakNot => PredictorState::WeakTake,
+                    PredictorState::WeakTake => PredictorState::StrongTake,
+                    PredictorState::StrongTake => PredictorState::StrongTake,
+                }
+            } else {
+                self.state = match self.state {
+                    PredictorState::StrongNot => PredictorState::StrongNot,
+                    PredictorState::WeakNot => PredictorState::StrongNot,
+                    PredictorState::WeakTake => PredictorState::WeakNot,
+                    PredictorState::StrongTake => PredictorState::WeakTake,
+                }
+            }
+        }
+    }
+
+    fn predict(self) -> bool {
+        return if self.state == PredictorState::WeakTake || self.state == PredictorState::StrongTake {
+            true
+        } else {
+            false
+        }
+    }
 }
 
 impl VirtualMachineInterface for VirtualMachine {
