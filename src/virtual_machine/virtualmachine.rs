@@ -2,6 +2,21 @@ use super::virtual_machine_interface::{RegisterKind, VirtualMachineInterface};
 use super::vm_defs::{Argument, Instruction, LabelType, Labels, Opcode};
 use std::num::Wrapping;
 
+#[derive(PartialEq, Clone, Copy)]
+enum PredictorState {
+    StrongNot,
+    WeakNot,
+    WeakTake,
+    StrongTake,
+}
+#[derive(PartialEq, Clone, Copy)]
+enum PredictorStrategy {
+    Always,
+    Never,
+    TwoBit,
+    OneBit,
+}
+
 #[derive(Debug, Clone)]
 pub struct VirtualMachine {
     error_state: bool,
@@ -15,6 +30,40 @@ pub struct VirtualMachine {
     data_memory: Vec<u8>,
     instruction_memory: Vec<Instruction>,
     labels: Labels,
+}
+
+pub struct BranchPredictor {
+    state: PredictorState,
+    strategy: PredictorStrategy,
+}
+
+impl BranchPredictor {
+    fn update(&mut self, correct: bool) {
+        self.state = match (self.strategy, correct, self.state) {
+            (PredictorStrategy::OneBit, true, PredictorState::WeakNot) => PredictorState::WeakTake,
+            (PredictorStrategy::OneBit, false, PredictorState::WeakTake) => PredictorState::WeakNot,
+            (PredictorStrategy::TwoBit, true, PredictorState::StrongNot) => PredictorState::WeakNot,
+            (PredictorStrategy::TwoBit, true, PredictorState::WeakNot) => {
+                PredictorState::StrongTake
+            }
+            (PredictorStrategy::TwoBit, true, PredictorState::WeakTake) => {
+                PredictorState::StrongTake
+            }
+            (PredictorStrategy::TwoBit, false, PredictorState::WeakNot) => PredictorState::WeakTake,
+            (PredictorStrategy::TwoBit, false, PredictorState::WeakTake) => PredictorState::WeakNot,
+            (PredictorStrategy::TwoBit, false, PredictorState::StrongTake) => {
+                PredictorState::WeakTake
+            }
+            _ => self.state,
+        };
+    }
+
+    fn predict(self) -> bool {
+        matches!(
+            self.state,
+            PredictorState::WeakTake | PredictorState::StrongTake
+        )
+    }
 }
 
 impl VirtualMachineInterface for VirtualMachine {
