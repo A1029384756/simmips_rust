@@ -59,7 +59,10 @@ impl BranchPredictor {
     }
 
     fn predict(self) -> bool {
-        matches!(self.state, PredictorState::WeakTake | PredictorState::StrongTake)
+        matches!(
+            self.state,
+            PredictorState::WeakTake | PredictorState::StrongTake
+        )
     }
 }
 
