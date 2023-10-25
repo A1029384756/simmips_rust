@@ -241,7 +241,7 @@ pub fn control_unit(opcode: u32, function: u32) -> ControlUnitOutput {
         0x0D => ControlUnitOutput {
             reg_dst: RegDst::RT,
             alu_src: true,
-            mem_to_reg: MemToReg::ImmLeftShift16,
+            mem_to_reg: MemToReg::ALUResult,
             reg_write: true,
             mem_read: Mem::None,
             mem_write: Mem::None,

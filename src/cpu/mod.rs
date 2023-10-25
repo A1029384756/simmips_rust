@@ -1,14 +1,15 @@
 #![allow(dead_code)]
 
-pub mod cpu_interface;
-pub mod instruction_memory;
-pub mod single_cycle_cpu;
-pub mod control_unit;
-pub mod data_memory;
-pub mod registers;
 pub mod alu;
+pub mod control_unit;
+pub mod cpu_interface;
+pub mod data_memory;
+pub mod instruction_memory;
+pub mod registers;
+pub mod single_cycle_cpu;
 
 const INST_MEM_START: u32 = 0x00400000;
+const DATA_MEM_START: u32 = 0x10010000;
 
 const BEQ_OPCODE: u32 = 0x04;
 const BNE_OPCODE: u32 = 0x05;

@@ -1,6 +1,6 @@
+mod cpu;
 mod ui_components;
 mod utils;
-mod cpu;
 
 use std::convert::identity;
 use std::path::PathBuf;
@@ -11,14 +11,14 @@ use mips_assembler::parse;
 
 use ui_components::info_dialog::*;
 
+use cpu::cpu_interface::CPUInterface;
+use cpu::single_cycle_cpu::SingleCycleCPU;
 use gtk::prelude::*;
 use num_traits::FromPrimitive;
 use relm4::prelude::*;
 use relm4_components::open_dialog::*;
 use ui_components::column_views::memory_view::{MemoryMsg, MemoryView};
 use ui_components::column_views::register_view::{RegMsg, RegisterView};
-use cpu::cpu_interface::CPUInterface;
-use cpu::single_cycle_cpu::SingleCycleCPU;
 
 struct App {
     open_dialog: Controller<OpenDialog>,
@@ -115,7 +115,7 @@ impl Component for App {
                         Ok((inst_mem, data_mem)) => {
                             self.vm = SingleCycleCPU::new_from_memory(inst_mem, data_mem);
                             update_registers_and_mem(self);
-                        },
+                        }
                         Err(err) => sender.input(Msg::ShowMessage(err)),
                     };
                     self.asm_view_buffer.set_text(&contents);

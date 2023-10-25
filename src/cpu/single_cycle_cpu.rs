@@ -96,7 +96,6 @@ impl CPUInterface for SingleCycleCPU {
             };
 
             let read_data = self.data_memory.load(alu_result, control_signals.mem_read);
-
             let reg_write_data = match control_signals.mem_to_reg {
                 MemToReg::MemoryRead => match read_data {
                     Some(data) => data,
