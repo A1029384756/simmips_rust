@@ -3,6 +3,7 @@ use relm4::{
     typed_view::column::{LabelColumn, TypedColumnView},
     ComponentParts, ComponentSender, SimpleComponent,
 };
+use crate::ui_components::column_views::RadixValues;
 
 const REG_NUMBERS: [&str; 35] = [
     "", "", "", "$0", "$1", "$2", "$3", "$4", "$5", "$6", "$7", "$8", "$9", "$10", "$11", "$12",
@@ -19,7 +20,7 @@ const REG_ALIAS: [&str; 35] = [
 pub struct RegisterRow {
     reg_num: &'static str,
     reg_alias: &'static str,
-    reg_val: u32,
+    reg_val: String,
 }
 
 pub struct RegNumColumn;
@@ -59,22 +60,17 @@ pub struct RegisterColumn;
 impl LabelColumn for RegisterColumn {
     type Item = RegisterRow;
 
-    type Value = u32;
+    type Value = String;
 
     const COLUMN_NAME: &'static str = "Register Contents";
 
     const ENABLE_SORT: bool = false;
 
-    fn get_cell_value(item: &Self::Item) -> Self::Value {
-        item.reg_val
-    }
-
-    fn format_cell_value(value: &Self::Value) -> String {
-        format!("0x{:08x}", value)
-    }
+    fn get_cell_value(item: &Self::Item) -> Self::Value { item.reg_val.clone() }
 }
 
 pub struct RegisterView {
+    radix: RadixValues,
     view_wrapper: TypedColumnView<RegisterRow, gtk::NoSelection>,
 }
 
@@ -107,11 +103,11 @@ impl SimpleComponent for RegisterView {
             view_wrapper.append(RegisterRow {
                 reg_num: REG_NUMBERS[idx],
                 reg_alias: REG_ALIAS[idx],
-                reg_val: 0,
+                reg_val: "0x00000000".to_owned(),
             });
         });
 
-        let model = RegisterView { view_wrapper };
+        let model = RegisterView { radix: RadixValues::HEX, view_wrapper };
 
         let my_view = &model.view_wrapper.view;
         my_view.set_show_row_separators(true);
@@ -134,7 +130,11 @@ impl SimpleComponent for RegisterView {
                     self.view_wrapper.append(RegisterRow {
                         reg_num: REG_NUMBERS[idx],
                         reg_alias: REG_ALIAS[idx],
-                        reg_val: *val,
+                        reg_val: match self.radix {
+                            RadixValues::BINARY => format!("0b{:08x}", *val),
+                            RadixValues::HEX => format!("0x{:08x}", *val),
+                            RadixValues::DECIMAL => format!("{:08}", *val),
+                        },
                     });
                 });
             }
