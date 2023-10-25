@@ -14,7 +14,3 @@ mips_assembler = { git = "https://github.com/A1029384756/mips_assembler", branch
 [[bin]]
 name = "simmips_gui"
 path = "src/main.rs"
-
-[[bin]]
-name = "simmips_tui"
-path = "src/tui.rs"

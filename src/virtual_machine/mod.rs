@@ -1,14 +1,9 @@
 #![allow(dead_code)]
 
-pub mod lexer;
-pub mod parser;
-pub mod token;
-pub mod util;
 pub mod virtual_machine_interface;
+pub mod instruction_memory;
 pub mod virtualmachine;
-pub mod vm_defs;
-
-pub mod lexer_tests;
-pub mod parser_tests;
-pub mod token_tests;
-pub mod virtual_machine_tests;
+pub mod control_unit;
+pub mod data_memory;
+pub mod registers;
+pub mod alu;
