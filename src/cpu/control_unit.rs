@@ -1,3 +1,6 @@
+use super::{BEQ_OPCODE, BNE_OPCODE, JR_FUNCT};
+
+#[derive(Debug)]
 pub enum AluOp {
     RType,
     Add,
@@ -21,6 +24,7 @@ pub struct ControlUnitOutput {
     pub alu_op: AluOp,
 }
 
+#[derive(Debug)]
 pub enum MemToReg {
     ALUResult,
     MemoryRead,
@@ -28,6 +32,7 @@ pub enum MemToReg {
     ImmLeftShift16,
 }
 
+#[derive(Debug)]
 pub enum PCSrc {
     PC,
     PCBranch,
@@ -35,12 +40,14 @@ pub enum PCSrc {
     RegJump,
 }
 
+#[derive(Debug)]
 pub enum RegDst {
     RT,
     RD,
     RA,
 }
 
+#[derive(Debug)]
 pub enum Mem {
     None,
     Byte,
@@ -52,12 +59,12 @@ pub fn control_unit(opcode: u32, function: u32) -> ControlUnitOutput {
     match opcode {
         // RTYPE
         0x00 => {
-            if function != 0x08 {
+            if function == JR_FUNCT {
                 ControlUnitOutput {
                     reg_dst: RegDst::RD,
                     alu_src: false,
                     mem_to_reg: MemToReg::ALUResult,
-                    reg_write: true,
+                    reg_write: false,
                     mem_read: Mem::None,
                     mem_write: Mem::None,
                     pc_src: PCSrc::RegJump,
@@ -68,7 +75,7 @@ pub fn control_unit(opcode: u32, function: u32) -> ControlUnitOutput {
                     reg_dst: RegDst::RD,
                     alu_src: false,
                     mem_to_reg: MemToReg::ALUResult,
-                    reg_write: false,
+                    reg_write: true,
                     mem_read: Mem::None,
                     mem_write: Mem::None,
                     pc_src: PCSrc::PC,
@@ -165,7 +172,7 @@ pub fn control_unit(opcode: u32, function: u32) -> ControlUnitOutput {
             alu_op: AluOp::Add,
         },
         // BEQ
-        0x04 => ControlUnitOutput {
+        BEQ_OPCODE => ControlUnitOutput {
             reg_dst: RegDst::RT,
             alu_src: false,
             mem_to_reg: MemToReg::ALUResult,
@@ -176,7 +183,7 @@ pub fn control_unit(opcode: u32, function: u32) -> ControlUnitOutput {
             alu_op: AluOp::Sub,
         },
         // BNE
-        0x05 => ControlUnitOutput {
+        BNE_OPCODE => ControlUnitOutput {
             reg_dst: RegDst::RT,
             alu_src: false,
             mem_to_reg: MemToReg::ALUResult,
