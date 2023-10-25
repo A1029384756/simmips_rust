@@ -4,7 +4,7 @@ pub type DataMemory = Vec<u8>;
 
 pub trait DataMem {
     fn load(&self, addr: u32, size: Mem) -> Option<u32>;
-    fn store(&mut self, data: u32, addr: u32, size: Mem);
+    fn store(&mut self, data: u32, addr: u32, size: Mem) -> Result<(), ()>;
 }
 
 impl DataMem for DataMemory {
@@ -26,30 +26,39 @@ impl DataMem for DataMemory {
         }
     }
 
-    fn store(&mut self, data: u32, addr: u32, size: Mem) {
+    fn store(&mut self, data: u32, addr: u32, size: Mem) -> Result<(), ()> {
         let offset_addr = addr.wrapping_sub(DATA_MEM_START);
         let data = data.to_be_bytes();
         match size {
-            Mem::None => {}
+            Mem::None => Ok(()),
             Mem::Byte => {
                 if let Some(elem) = self.get_mut(offset_addr as usize) {
                     *elem = data[0];
+                    Ok(())
+                } else {
+                    Err(())
                 }
             }
-            Mem::Half => {
-                (0..2).for_each(|v| {
+            Mem::Half => (0..2)
+                .map(|v| {
                     if let Some(elem) = self.get_mut(offset_addr as usize + v) {
                         *elem = data[v];
+                        Ok(())
+                    } else {
+                        Err(())
                     }
-                });
-            }
-            Mem::Word => {
-                (0..4).for_each(|v| {
+                })
+                .collect(),
+            Mem::Word => (0..4)
+                .map(|v| {
                     if let Some(elem) = self.get_mut(offset_addr as usize + v) {
                         *elem = data[v];
+                        Ok(())
+                    } else {
+                        Err(())
                     }
-                });
-            }
+                })
+                .collect(),
         }
     }
 }

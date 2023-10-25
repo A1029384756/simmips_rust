@@ -108,10 +108,15 @@ impl CPUInterface for SingleCycleCPU {
                 MemToReg::ImmLeftShift16 => immediate << 16,
             };
 
-            self.data_memory
-                .store(rt, alu_result, control_signals.mem_write);
             self.registers
                 .write(reg_write_data, write_register, control_signals.reg_write);
+            if matches!(
+                self.data_memory
+                    .store(rt, alu_result, control_signals.mem_write),
+                Err(())
+            ) {
+                self.error_message = Some(format!("Invalid memory write address: {}", rt));
+            }
         } else {
             self.error_message = Some("Out of range instruction".to_string());
         }

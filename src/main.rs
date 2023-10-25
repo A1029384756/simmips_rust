@@ -4,12 +4,10 @@ mod utils;
 
 use std::convert::identity;
 use std::path::PathBuf;
-use std::sync::mpsc;
 use std::sync::mpsc::Sender;
+use std::sync::{mpsc, Arc, Mutex};
 
 use mips_assembler::parse;
-
-use ui_components::info_dialog::*;
 
 use cpu::cpu_interface::CPUInterface;
 use cpu::single_cycle_cpu::SingleCycleCPU;
@@ -17,18 +15,24 @@ use gtk::prelude::*;
 use num_traits::FromPrimitive;
 use relm4::prelude::*;
 use relm4_components::open_dialog::*;
+
 use ui_components::column_views::memory_view::{MemoryMsg, MemoryView};
 use ui_components::column_views::register_view::{RegMsg, RegisterView};
+use ui_components::header::{HeaderMsg, HeaderView};
+use ui_components::info_dialog::{DialogMsg, InfoDialog};
 
 struct App {
     open_dialog: Controller<OpenDialog>,
     info_dialog: Controller<InfoDialog>,
-    vm: SingleCycleCPU,
-    asm_view_buffer: gtk::TextBuffer,
+    header: Controller<HeaderView>,
     register_view: Controller<RegisterView>,
     memory_view: Controller<MemoryView>,
+
+    mode: AppMode,
+    cpu: Arc<Mutex<dyn CPUInterface>>,
+    asm_view_buffer: gtk::TextBuffer,
     app_to_thread: Option<Sender<()>>,
-    vm_running: bool,
+    cpu_unning: bool,
 }
 
 #[derive(Debug)]
@@ -41,11 +45,18 @@ pub enum Msg {
     Break,
     ResetSimulation,
     ShowMessage(String),
+    SetMode(AppMode),
+}
+
+#[derive(Debug)]
+pub enum AppMode {
+    SimpleView,
+    ComponentView,
 }
 
 #[derive(Debug)]
 enum CommandMsg {
-    ThreadFinished(SingleCycleCPU),
+    ThreadFinished,
 }
 
 #[relm4::component]
@@ -73,6 +84,14 @@ impl Component for App {
             .launch(())
             .forward(sender.input_sender(), |_| Msg::Ignore);
 
+        let header =
+            HeaderView::builder()
+                .launch(())
+                .forward(sender.input_sender(), |msg| match msg {
+                    HeaderMsg::SimpleView => Msg::SetMode(AppMode::SimpleView),
+                    HeaderMsg::ComponentView => Msg::SetMode(AppMode::ComponentView),
+                });
+
         let register_view: Controller<RegisterView> = RegisterView::builder()
             .launch(())
             .forward(sender.input_sender(), identity);
@@ -93,12 +112,14 @@ impl Component for App {
         let model = App {
             open_dialog,
             info_dialog,
-            vm: SingleCycleCPU::new(),
+            header,
+            mode: AppMode::SimpleView,
+            cpu: Arc::new(Mutex::new(SingleCycleCPU::new())),
             asm_view_buffer: gtk::TextBuffer::new(Some(&tag_table)),
             register_view,
             memory_view,
             app_to_thread: None,
-            vm_running: false,
+            cpu_unning: false,
         };
 
         let widgets = view_output!();
@@ -113,8 +134,10 @@ impl Component for App {
                 Ok(contents) => {
                     match parse(&contents) {
                         Ok((inst_mem, data_mem)) => {
-                            self.vm = SingleCycleCPU::new_from_memory(inst_mem, data_mem);
-                            update_registers_and_mem(self);
+                            self.cpu = Arc::new(Mutex::new(SingleCycleCPU::new_from_memory(
+                                inst_mem, data_mem,
+                            )));
+                            self.update_registers_and_mem();
                         }
                         Err(err) => sender.input(Msg::ShowMessage(err)),
                     };
@@ -123,26 +146,30 @@ impl Component for App {
                 Err(e) => sender.input(Msg::ShowMessage(e.to_string())),
             },
             Msg::Step => {
-                self.vm.step();
-                update_registers_and_mem(self);
-                if let Some(error) = self.vm.get_error() {
-                    sender.input(Msg::ShowMessage(error));
+                if let Ok(mut cpu) = self.cpu.lock() {
+                    cpu.step();
+                    if let Some(error) = cpu.get_error() {
+                        sender.input(Msg::ShowMessage(error));
+                    }
                 }
+                self.update_registers_and_mem();
             }
             Msg::Run => {
                 let (app_tx, thread_rx) = mpsc::channel::<()>();
-                self.vm_running = true;
+                self.cpu_unning = true;
 
                 self.app_to_thread = Some(app_tx);
-                let mut thread_vm = self.vm.clone();
+                let cpu_copy = self.cpu.clone();
                 sender.oneshot_command(async move {
-                    while let None = thread_vm.get_error() {
-                        thread_vm.step();
-                        if thread_rx.try_recv().is_ok() {
-                            break;
+                    if let Ok(mut cpu) = cpu_copy.lock() {
+                        while let None = cpu.get_error() {
+                            cpu.step();
+                            if thread_rx.try_recv().is_ok() {
+                                break;
+                            }
                         }
                     }
-                    CommandMsg::ThreadFinished(thread_vm)
+                    CommandMsg::ThreadFinished
                 });
             }
             Msg::Break => match &self.app_to_thread {
@@ -157,6 +184,7 @@ impl Component for App {
 
                 self.info_dialog.emit(DialogMsg::Show(message));
             }
+            Msg::SetMode(mode) => self.mode = mode,
             Msg::ResetSimulation => {}
             Msg::Ignore => {}
         }
@@ -169,12 +197,13 @@ impl Component for App {
         _: &Self::Root,
     ) {
         match message {
-            CommandMsg::ThreadFinished(new_vm) => {
-                self.vm_running = false;
-                self.vm = new_vm;
-                update_registers_and_mem(self);
-                if let Some(error) = self.vm.get_error() {
-                    sender.input(Msg::ShowMessage(error));
+            CommandMsg::ThreadFinished => {
+                self.cpu_unning = false;
+                self.update_registers_and_mem();
+                if let Ok(cpu) = self.cpu.lock() {
+                    if let Some(error) = cpu.get_error() {
+                        sender.input(Msg::ShowMessage(error));
+                    }
                 }
             }
         }
@@ -184,6 +213,7 @@ impl Component for App {
         root = gtk::Window {
             set_title: Some("MIPS Simulator"),
             set_default_size: (800, 600),
+            set_titlebar: Some(model.header.widget()),
 
             gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
@@ -223,60 +253,58 @@ impl Component for App {
                     gtk::Button {
                         set_label: "Load File",
                         #[watch]
-                        set_sensitive: !model.vm_running,
+                        set_sensitive: !model.cpu_unning,
                         connect_clicked => Msg::OpenRequest,
                     },
 
                     gtk::Button {
                         set_label: "Step",
                         #[watch]
-                        set_sensitive: !model.vm_running,
+                        set_sensitive: !model.cpu_unning,
                         connect_clicked => Msg::Step,
                     },
 
                     gtk::Button {
                         set_label: "Run",
                         #[watch]
-                        set_sensitive: !model.vm_running,
+                        set_sensitive: !model.cpu_unning,
                         connect_clicked => Msg::Run,
                     },
 
                     gtk::Button {
                         set_label: "Break",
                         #[watch]
-                        set_sensitive: model.vm_running,
+                        set_sensitive: model.cpu_unning,
                         connect_clicked => Msg::Break,
                     },
 
                     gtk::Button {
                         set_label: "Reset",
                         #[watch]
-                        set_sensitive: !model.vm_running,
+                        set_sensitive: !model.cpu_unning,
                         connect_clicked => Msg::ResetSimulation,
                     },
-
-                    // gtk::Label {
-                    //     #[watch]
-                    //     set_label: &format!("Current Line: {}", model.vm.get_current_source_line()),
-                    //     set_margin_all: 5,
-                    // },
                 }
             }
         }
     }
 }
 
-fn update_registers_and_mem(app: &mut App) {
-    app.register_view.emit(RegMsg::UpdateRegisters(
-        (0..33)
-            .map(|idx| app.vm.get_register(FromPrimitive::from_i32(idx).unwrap()))
-            .collect(),
-    ));
-    app.memory_view.emit(MemoryMsg::UpdateMemory(
-        (0..app.vm.get_memory_size())
-            .map(|idx| app.vm.get_memory_byte(idx).unwrap())
-            .collect(),
-    ));
+impl App {
+    fn update_registers_and_mem(&mut self) {
+        if let Ok(cpu) = self.cpu.lock() {
+            self.register_view.emit(RegMsg::UpdateRegisters(
+                (0..33)
+                    .map(|idx| cpu.get_register(FromPrimitive::from_i32(idx).unwrap()))
+                    .collect(),
+            ));
+            self.memory_view.emit(MemoryMsg::UpdateMemory(
+                (0..cpu.get_memory_size())
+                    .map(|idx| cpu.get_memory_byte(idx).unwrap())
+                    .collect(),
+            ));
+        }
+    }
 }
 
 fn main() {

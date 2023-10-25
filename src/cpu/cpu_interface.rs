@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use num_derive::FromPrimitive;
 
 #[derive(Debug, Clone, Copy, FromPrimitive)]
@@ -37,7 +39,7 @@ pub enum RegisterKind {
     RegPC = 32,
 }
 
-pub trait CPUInterface {
+pub trait CPUInterface: Send {
     fn get_memory_size(&self) -> u32;
     fn get_instruction_size(&self) -> u32;
 
@@ -47,4 +49,16 @@ pub trait CPUInterface {
     fn get_error(&self) -> Option<String>;
 
     fn step(&mut self);
+}
+
+impl Debug for dyn CPUInterface {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "CPU with memory size: {}, instruction size: {}, and error: {:?}",
+            self.get_memory_size(),
+            self.get_instruction_size(),
+            self.get_error()
+        )
+    }
 }
