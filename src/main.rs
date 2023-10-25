@@ -184,7 +184,21 @@ impl Component for App {
                 self.info_dialog.emit(DialogMsg::Show(message));
             }
             Msg::SetMode(mode) => self.mode = mode,
-            Msg::ResetSimulation => {}
+            Msg::ResetSimulation => {
+                match parse(&self.asm_view_buffer.text(
+                    &self.asm_view_buffer.start_iter(),
+                    &self.asm_view_buffer.end_iter(),
+                    true,
+                )) {
+                    Ok((inst_mem, data_mem)) => {
+                        self.cpu = Arc::new(Mutex::new(SingleCycleCPU::new_from_memory(
+                            inst_mem, data_mem,
+                        )));
+                        self.simple_view.model().update(self.cpu.clone());
+                    }
+                    Err(err) => sender.input(Msg::ShowMessage(err)),
+                };
+            }
             Msg::Ignore => {}
         }
     }
