@@ -35,10 +35,9 @@ impl CPUInterface for SingleCycleCPU {
     }
 
     fn get_register(&self, reg: RegisterKind) -> u32 {
-        if matches!(reg, RegisterKind::RegPC) {
-            self.pc
-        } else {
-            self.registers.get(reg as usize).copied().unwrap()
+        match reg {
+            RegisterKind::RegPC => self.pc,
+            _ => self.registers.get(reg as usize).copied().unwrap(),
         }
     }
 
