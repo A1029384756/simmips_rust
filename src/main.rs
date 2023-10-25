@@ -1,6 +1,6 @@
 mod ui_components;
 mod utils;
-mod virtual_machine;
+mod cpu;
 
 use std::convert::identity;
 use std::path::PathBuf;
@@ -17,8 +17,8 @@ use relm4::prelude::*;
 use relm4_components::open_dialog::*;
 use ui_components::column_views::memory_view::{MemoryMsg, MemoryView};
 use ui_components::column_views::register_view::{RegMsg, RegisterView};
-use virtual_machine::virtual_machine_interface::CPUInterface;
-use virtual_machine::virtualmachine::SingleCycleCPU;
+use cpu::cpu_interface::CPUInterface;
+use cpu::single_cycle_cpu::SingleCycleCPU;
 
 struct App {
     open_dialog: Controller<OpenDialog>,

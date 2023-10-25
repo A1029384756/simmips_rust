@@ -6,7 +6,7 @@ use super::{
     data_memory::{DataMem, DataMemory},
     instruction_memory::{InstructionMem, InstructionMemory},
     registers::{Register, Registers},
-    virtual_machine_interface::{CPUInterface, RegisterKind},
+    cpu_interface::{CPUInterface, RegisterKind},
 };
 
 #[derive(Debug, Clone)]
