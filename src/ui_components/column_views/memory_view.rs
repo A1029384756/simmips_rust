@@ -1,10 +1,10 @@
+use crate::ui_components::column_views::RadixValues;
 use crate::ui_components::column_views::RadixValues::{BINARY, HEX};
 use relm4::{gtk::traits::WidgetExt, prelude::*};
 use relm4::{
     typed_view::column::{LabelColumn, TypedColumnView},
     ComponentParts, ComponentSender, SimpleComponent,
 };
-use crate::ui_components::column_views::RadixValues;
 
 pub struct MemoryRow {
     addr: u32,
@@ -83,7 +83,10 @@ impl SimpleComponent for MemoryView {
             });
         });
 
-        let model = MemoryView { radix: RadixValues::HEX, view_wrapper };
+        let model = MemoryView {
+            radix: RadixValues::HEX,
+            view_wrapper,
+        };
 
         let my_view = &model.view_wrapper.view;
         my_view.set_show_row_separators(true);

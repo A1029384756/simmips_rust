@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use num_derive::FromPrimitive;
 
-use super::{control_unit::ControlUnitOutput, alu::AluOperation};
+use super::{alu::AluOperation, control_unit::ControlUnitOutput};
 
 #[derive(Debug, Clone, Copy, FromPrimitive)]
 pub enum RegisterKind {

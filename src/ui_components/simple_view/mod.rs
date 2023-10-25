@@ -7,8 +7,8 @@ use relm4::prelude::*;
 
 use crate::cpu::cpu_interface::CPUInterface;
 
-use super::CPUView;
 use super::column_views::{memory_view::*, register_view::*};
+use super::CPUView;
 
 pub struct SimpleView {
     register_view: Controller<RegisterView>,

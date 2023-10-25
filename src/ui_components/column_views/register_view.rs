@@ -1,9 +1,9 @@
+use crate::ui_components::column_views::RadixValues;
 use relm4::{gtk::traits::WidgetExt, prelude::*};
 use relm4::{
     typed_view::column::{LabelColumn, TypedColumnView},
     ComponentParts, ComponentSender, SimpleComponent,
 };
-use crate::ui_components::column_views::RadixValues;
 
 const REG_NUMBERS: [&str; 33] = [
     "", "$0", "$1", "$2", "$3", "$4", "$5", "$6", "$7", "$8", "$9", "$10", "$11", "$12", "$13",
@@ -66,7 +66,9 @@ impl LabelColumn for RegisterColumn {
 
     const ENABLE_SORT: bool = false;
 
-    fn get_cell_value(item: &Self::Item) -> Self::Value { item.reg_val.clone() }
+    fn get_cell_value(item: &Self::Item) -> Self::Value {
+        item.reg_val.clone()
+    }
 }
 
 pub struct RegisterView {
@@ -107,7 +109,10 @@ impl SimpleComponent for RegisterView {
             });
         });
 
-        let model = RegisterView { radix: RadixValues::HEX, view_wrapper };
+        let model = RegisterView {
+            radix: RadixValues::HEX,
+            view_wrapper,
+        };
 
         let my_view = &model.view_wrapper.view;
         my_view.set_show_row_separators(true);
