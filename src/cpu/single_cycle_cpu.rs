@@ -45,6 +45,14 @@ impl CPUInterface for SingleCycleCPU {
         self.error_message.clone()
     }
 
+    fn get_control_signals(&self) -> super::control_unit::ControlUnitOutput {
+        todo!()
+    }
+
+    fn get_alu_signals(&self) -> super::alu::AluOperation {
+        todo!()
+    }
+
     fn step(&mut self) {
         if let Some(inst) = self.instruction_memory.get_instruction(self.pc) {
             let inc_pc = self.pc + 4;

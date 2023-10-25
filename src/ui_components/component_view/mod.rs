@@ -10,19 +10,19 @@ use crate::cpu::cpu_interface::CPUInterface;
 use super::CPUView;
 use super::column_views::{memory_view::*, register_view::*};
 
-pub struct SimpleView {
+pub struct ComponentView {
     register_view: Controller<RegisterView>,
     memory_view: Controller<MemoryView>,
 }
 
 #[derive(Debug)]
-pub enum SimpleViewMessage {
+pub enum ComponentViewMessage {
     Foo,
 }
 
 #[relm4::component(pub)]
-impl SimpleComponent for SimpleView {
-    type Input = SimpleViewMessage;
+impl SimpleComponent for ComponentView {
+    type Input = ComponentViewMessage;
     type Output = ();
     type Init = ();
 
@@ -33,13 +33,13 @@ impl SimpleComponent for SimpleView {
     ) -> ComponentParts<Self> {
         let register_view: Controller<RegisterView> = RegisterView::builder()
             .launch(())
-            .forward(sender.input_sender(), |_| SimpleViewMessage::Foo);
+            .forward(sender.input_sender(), |_| ComponentViewMessage::Foo);
 
         let memory_view: Controller<MemoryView> = MemoryView::builder()
             .launch(())
-            .forward(sender.input_sender(), |_| SimpleViewMessage::Foo);
+            .forward(sender.input_sender(), |_| ComponentViewMessage::Foo);
 
-        let model = SimpleView {
+        let model = ComponentView {
             register_view,
             memory_view,
         };
@@ -49,7 +49,7 @@ impl SimpleComponent for SimpleView {
 
     fn update(&mut self, msg: Self::Input, _sender: ComponentSender<Self>) {
         match msg {
-            SimpleViewMessage::Foo => todo!(),
+            ComponentViewMessage::Foo => todo!(),
         }
     }
 
@@ -59,13 +59,13 @@ impl SimpleComponent for SimpleView {
             set_orientation: gtk::Orientation::Horizontal,
             set_spacing: 5,
             set_margin_all: 5,
-            append: model.register_view.widget(),
             append: model.memory_view.widget(),
+            append: model.register_view.widget(),
         },
     }
 }
 
-impl CPUView for SimpleView {
+impl CPUView for ComponentView {
     fn update(&self, cpu: Arc<Mutex<dyn CPUInterface>>) {
         if let Ok(cpu) = cpu.lock() {
             self.register_view.emit(RegMsg::UpdateRegisters(

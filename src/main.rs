@@ -2,7 +2,6 @@ mod cpu;
 mod ui_components;
 mod utils;
 
-use std::convert::identity;
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 use std::sync::{mpsc, Arc, Mutex};
@@ -12,21 +11,22 @@ use mips_assembler::parse;
 use cpu::cpu_interface::CPUInterface;
 use cpu::single_cycle_cpu::SingleCycleCPU;
 use gtk::prelude::*;
-use num_traits::FromPrimitive;
+use relm4::gtk::traits::{BoxExt, WidgetExt};
 use relm4::prelude::*;
 use relm4_components::open_dialog::*;
 
-use ui_components::column_views::memory_view::{MemoryMsg, MemoryView};
-use ui_components::column_views::register_view::{RegMsg, RegisterView};
+use ui_components::component_view::ComponentView;
 use ui_components::header::{HeaderMsg, HeaderView};
 use ui_components::info_dialog::{DialogMsg, InfoDialog};
+use ui_components::simple_view::SimpleView;
+use ui_components::CPUView;
 
 struct App {
     open_dialog: Controller<OpenDialog>,
     info_dialog: Controller<InfoDialog>,
     header: Controller<HeaderView>,
-    register_view: Controller<RegisterView>,
-    memory_view: Controller<MemoryView>,
+    simple_view: Controller<SimpleView>,
+    component_view: Controller<ComponentView>,
 
     mode: AppMode,
     cpu: Arc<Mutex<dyn CPUInterface>>,
@@ -92,13 +92,12 @@ impl Component for App {
                     HeaderMsg::ComponentView => Msg::SetMode(AppMode::ComponentView),
                 });
 
-        let register_view: Controller<RegisterView> = RegisterView::builder()
+        let simple_view = SimpleView::builder()
             .launch(())
-            .forward(sender.input_sender(), identity);
-
-        let memory_view: Controller<MemoryView> = MemoryView::builder()
+            .forward(sender.input_sender(), |_| Msg::Ignore);
+        let component_view = ComponentView::builder()
             .launch(())
-            .forward(sender.input_sender(), identity);
+            .forward(sender.input_sender(), |_| Msg::Ignore);
 
         let tag_table = gtk::TextTagTable::new();
         tag_table.add(
@@ -112,12 +111,12 @@ impl Component for App {
         let model = App {
             open_dialog,
             info_dialog,
+            simple_view,
+            component_view,
             header,
             mode: AppMode::SimpleView,
             cpu: Arc::new(Mutex::new(SingleCycleCPU::new())),
             asm_view_buffer: gtk::TextBuffer::new(Some(&tag_table)),
-            register_view,
-            memory_view,
             app_to_thread: None,
             cpu_unning: false,
         };
@@ -137,7 +136,7 @@ impl Component for App {
                             self.cpu = Arc::new(Mutex::new(SingleCycleCPU::new_from_memory(
                                 inst_mem, data_mem,
                             )));
-                            self.update_registers_and_mem();
+                            self.simple_view.model().update(self.cpu.clone());
                         }
                         Err(err) => sender.input(Msg::ShowMessage(err)),
                     };
@@ -152,7 +151,7 @@ impl Component for App {
                         sender.input(Msg::ShowMessage(error));
                     }
                 }
-                self.update_registers_and_mem();
+                self.simple_view.model().update(self.cpu.clone());
             }
             Msg::Run => {
                 let (app_tx, thread_rx) = mpsc::channel::<()>();
@@ -199,7 +198,7 @@ impl Component for App {
         match message {
             CommandMsg::ThreadFinished => {
                 self.cpu_unning = false;
-                self.update_registers_and_mem();
+                self.simple_view.model().update(self.cpu.clone());
                 if let Ok(cpu) = self.cpu.lock() {
                     if let Some(error) = cpu.get_error() {
                         sender.input(Msg::ShowMessage(error));
@@ -240,8 +239,16 @@ impl Component for App {
                         },
                     },
 
-                    append: model.register_view.widget(),
-                    append: model.memory_view.widget(),
+                    #[watch]
+                    remove: match model.mode {
+                        AppMode::SimpleView => model.component_view.widget(),
+                        AppMode::ComponentView => model.simple_view.widget(),
+                    },
+                    #[watch]
+                    append: match model.mode {
+                        AppMode::SimpleView => model.simple_view.widget(),
+                        AppMode::ComponentView => model.component_view.widget(),
+                    },
                 },
 
                 gtk::Box {
@@ -286,23 +293,6 @@ impl Component for App {
                     },
                 }
             }
-        }
-    }
-}
-
-impl App {
-    fn update_registers_and_mem(&mut self) {
-        if let Ok(cpu) = self.cpu.lock() {
-            self.register_view.emit(RegMsg::UpdateRegisters(
-                (0..33)
-                    .map(|idx| cpu.get_register(FromPrimitive::from_i32(idx).unwrap()))
-                    .collect(),
-            ));
-            self.memory_view.emit(MemoryMsg::UpdateMemory(
-                (0..cpu.get_memory_size())
-                    .map(|idx| cpu.get_memory_byte(idx).unwrap())
-                    .collect(),
-            ));
         }
     }
 }

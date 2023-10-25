@@ -2,6 +2,8 @@ use std::fmt::Debug;
 
 use num_derive::FromPrimitive;
 
+use super::{control_unit::ControlUnitOutput, alu::AluOperation};
+
 #[derive(Debug, Clone, Copy, FromPrimitive)]
 pub enum RegisterKind {
     Reg00 = 0,
@@ -45,6 +47,9 @@ pub trait CPUInterface: Send {
 
     fn get_register(&self, reg: RegisterKind) -> u32;
     fn get_memory_byte(&self, address: u32) -> Option<u8>;
+
+    fn get_control_signals(&self) -> ControlUnitOutput;
+    fn get_alu_signals(&self) -> AluOperation;
 
     fn get_error(&self) -> Option<String>;
 
