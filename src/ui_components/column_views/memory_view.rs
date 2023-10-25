@@ -1,12 +1,14 @@
+use crate::ui_components::column_views::RadixValues::{BINARY, HEX};
 use relm4::{gtk::traits::WidgetExt, prelude::*};
 use relm4::{
     typed_view::column::{LabelColumn, TypedColumnView},
     ComponentParts, ComponentSender, SimpleComponent,
 };
+use crate::ui_components::column_views::RadixValues;
 
 pub struct MemoryRow {
     addr: u32,
-    value: u8,
+    value: String,
 }
 
 pub struct AddressColumn;
@@ -34,22 +36,19 @@ pub struct MemoryColumn;
 impl LabelColumn for MemoryColumn {
     type Item = MemoryRow;
 
-    type Value = u8;
+    type Value = String;
 
     const COLUMN_NAME: &'static str = "Memory Contents";
 
     const ENABLE_SORT: bool = false;
 
     fn get_cell_value(item: &Self::Item) -> Self::Value {
-        item.value
-    }
-
-    fn format_cell_value(value: &Self::Value) -> String {
-        format!("0x{:02x}", value)
+        item.value.clone()
     }
 }
 
 pub struct MemoryView {
+    radix: RadixValues,
     view_wrapper: TypedColumnView<MemoryRow, gtk::NoSelection>,
 }
 
@@ -80,11 +79,11 @@ impl SimpleComponent for MemoryView {
         (0..1024).for_each(|idx| {
             view_wrapper.append(MemoryRow {
                 addr: idx,
-                value: 0,
+                value: "0x00000000".to_owned(),
             });
         });
 
-        let model = MemoryView { view_wrapper };
+        let model = MemoryView { radix: RadixValues::HEX, view_wrapper };
 
         let my_view = &model.view_wrapper.view;
         my_view.set_show_row_separators(true);
@@ -100,7 +99,11 @@ impl SimpleComponent for MemoryView {
                 new_mem.into_iter().enumerate().for_each(|(idx, val)| {
                     self.view_wrapper.append(MemoryRow {
                         addr: idx as u32,
-                        value: val,
+                        value: match self.radix {
+                            RadixValues::BINARY => format!("0b{:08b}", val),
+                            RadixValues::HEX => format!("0x{:08x}", val),
+                            RadixValues::DECIMAL => format!("{:08}", val),
+                        },
                     });
                 })
             }
