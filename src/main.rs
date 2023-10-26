@@ -10,20 +10,19 @@ use mips_assembler::parse;
 
 use cpu::cpu_interface::CPUInterface;
 use cpu::single_cycle_cpu::SingleCycleCPU;
-use gtk::prelude::*;
-use relm4::gtk::traits::{BoxExt, WidgetExt};
+use relm4::adw::traits::*;
+use relm4::gtk::glib::clone;
+use relm4::gtk::traits::*;
 use relm4::prelude::*;
 use relm4_components::open_dialog::*;
 
 use ui_components::component_view::ComponentView;
 use ui_components::header::{HeaderMsg, HeaderView};
-use ui_components::info_dialog::{DialogMsg, InfoDialog};
 use ui_components::simple_view::SimpleView;
 use ui_components::CPUView;
 
 struct App {
     open_dialog: Controller<OpenDialog>,
-    info_dialog: Controller<InfoDialog>,
     header: Controller<HeaderView>,
     simple_view: Controller<SimpleView>,
     component_view: Controller<ComponentView>,
@@ -44,6 +43,7 @@ pub enum Msg {
     Run,
     Break,
     ResetSimulation,
+    UpdateViews,
     ShowMessage(String),
     SetMode(AppMode),
 }
@@ -79,11 +79,6 @@ impl Component for App {
                 OpenDialogResponse::Cancel => Msg::Ignore,
             });
 
-        let info_dialog = InfoDialog::builder()
-            .transient_for(root)
-            .launch(())
-            .forward(sender.input_sender(), |_| Msg::Ignore);
-
         let header =
             HeaderView::builder()
                 .launch(())
@@ -95,6 +90,7 @@ impl Component for App {
         let simple_view = SimpleView::builder()
             .launch(())
             .forward(sender.input_sender(), |_| Msg::Ignore);
+
         let component_view = ComponentView::builder()
             .launch(())
             .forward(sender.input_sender(), |_| Msg::Ignore);
@@ -110,7 +106,6 @@ impl Component for App {
 
         let model = App {
             open_dialog,
-            info_dialog,
             simple_view,
             component_view,
             header,
@@ -120,6 +115,8 @@ impl Component for App {
             app_to_thread: None,
             cpu_unning: false,
         };
+        let simple_widget = model.simple_view.widget();
+        let component_widget = model.component_view.widget();
 
         let widgets = view_output!();
 
@@ -136,7 +133,7 @@ impl Component for App {
                             self.cpu = Arc::new(Mutex::new(SingleCycleCPU::new_from_memory(
                                 inst_mem, data_mem,
                             )));
-                            self.simple_view.model().update(self.cpu.clone());
+                            sender.input(Msg::UpdateViews);
                         }
                         Err(err) => sender.input(Msg::ShowMessage(err)),
                     };
@@ -151,7 +148,7 @@ impl Component for App {
                         sender.input(Msg::ShowMessage(error));
                     }
                 }
-                self.simple_view.model().update(self.cpu.clone());
+                sender.input(Msg::UpdateViews);
             }
             Msg::Run => {
                 let (app_tx, thread_rx) = mpsc::channel::<()>();
@@ -176,12 +173,19 @@ impl Component for App {
                 None => {}
             },
             Msg::ShowMessage(message) => {
-                self.info_dialog = InfoDialog::builder()
+                let dialog = adw::MessageDialog::builder()
                     .transient_for(root)
-                    .launch(())
-                    .forward(sender.input_sender(), |_| Msg::Ignore);
-
-                self.info_dialog.emit(DialogMsg::Show(message));
+                    .body(message)
+                    .build();
+                dialog.add_response("Ok", "Ok");
+                dialog.set_default_response(Some("Ok"));
+                dialog.connect_response(
+                    None,
+                    clone!(@strong sender => move |dialog, _| {
+                        dialog.close();
+                    }),
+                );
+                dialog.present();
             }
             Msg::SetMode(mode) => self.mode = mode,
             Msg::ResetSimulation => {
@@ -194,10 +198,14 @@ impl Component for App {
                         self.cpu = Arc::new(Mutex::new(SingleCycleCPU::new_from_memory(
                             inst_mem, data_mem,
                         )));
-                        self.simple_view.model().update(self.cpu.clone());
+                        sender.input(Msg::UpdateViews);
                     }
                     Err(err) => sender.input(Msg::ShowMessage(err)),
                 };
+            }
+            Msg::UpdateViews => {
+                self.simple_view.model().update(self.cpu.clone());
+                self.component_view.model().update(self.cpu.clone());
             }
             Msg::Ignore => {}
         }
@@ -212,7 +220,7 @@ impl Component for App {
         match message {
             CommandMsg::ThreadFinished => {
                 self.cpu_unning = false;
-                self.simple_view.model().update(self.cpu.clone());
+                sender.input(Msg::UpdateViews);
                 if let Ok(cpu) = self.cpu.lock() {
                     if let Some(error) = cpu.get_error() {
                         sender.input(Msg::ShowMessage(error));
@@ -223,7 +231,7 @@ impl Component for App {
     }
 
     view! {
-        root = gtk::Window {
+        gtk::Window {
             set_title: Some("MIPS Simulator"),
             set_default_size: (800, 600),
             set_titlebar: Some(model.header.widget()),
@@ -253,15 +261,16 @@ impl Component for App {
                         },
                     },
 
-                    #[watch]
-                    remove: match model.mode {
-                        AppMode::SimpleView => model.component_view.widget(),
-                        AppMode::ComponentView => model.simple_view.widget(),
-                    },
-                    #[watch]
-                    append: match model.mode {
-                        AppMode::SimpleView => model.simple_view.widget(),
-                        AppMode::ComponentView => model.component_view.widget(),
+                    #[transition = "SlideLeftRight"]
+                    match model.mode {
+                        AppMode::SimpleView => gtk::Box {
+                            #[local_ref]
+                            simple_widget -> gtk::Box {},
+                        }
+                        AppMode::ComponentView => gtk::Box {
+                            #[local_ref]
+                            component_widget -> gtk::Box {},
+                        }
                     },
                 },
 
