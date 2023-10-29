@@ -7,6 +7,9 @@ pub mod component_view;
 pub mod header;
 pub mod simple_view;
 
-pub trait CPUView {
-    fn update(&self, cpu: Arc<Mutex<dyn CPUInterface>>);
+#[derive(Debug)]
+pub enum CPUViewMessage {
+    Update(Arc<Mutex<dyn CPUInterface>>),
+    Resize((i32, i32)),
+    None,
 }

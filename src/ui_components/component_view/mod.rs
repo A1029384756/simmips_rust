@@ -1,28 +1,17 @@
-use std::sync::{Arc, Mutex};
-
+use super::CPUViewMessage;
 use gtk::prelude::*;
-use num::FromPrimitive;
+use relm4::drawing::DrawHandler;
+use relm4::gtk::cairo::{Context, Operator};
 use relm4::gtk::traits::BoxExt;
 use relm4::prelude::*;
 
-use crate::cpu::cpu_interface::CPUInterface;
-
-use super::column_views::{memory_view::*, register_view::*};
-use super::CPUView;
-
 pub struct ComponentView {
-    register_view: Controller<RegisterView>,
-    memory_view: Controller<MemoryView>,
-}
-
-#[derive(Debug)]
-pub enum ComponentViewMessage {
-    Foo,
+    handler: DrawHandler,
 }
 
 #[relm4::component(pub)]
 impl SimpleComponent for ComponentView {
-    type Input = ComponentViewMessage;
+    type Input = CPUViewMessage;
     type Output = ();
     type Init = ();
 
@@ -31,53 +20,48 @@ impl SimpleComponent for ComponentView {
         root: &Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-        let register_view: Controller<RegisterView> = RegisterView::builder()
-            .launch(())
-            .forward(sender.input_sender(), |_| ComponentViewMessage::Foo);
-
-        let memory_view: Controller<MemoryView> = MemoryView::builder()
-            .launch(())
-            .forward(sender.input_sender(), |_| ComponentViewMessage::Foo);
-
         let model = ComponentView {
-            register_view,
-            memory_view,
+            handler: DrawHandler::new(),
         };
+
+        let area = model.handler.drawing_area();
         let widgets = view_output!();
         ComponentParts { model, widgets }
     }
 
     fn update(&mut self, msg: Self::Input, _sender: ComponentSender<Self>) {
+        let cx = self.handler.get_context();
         match msg {
-            ComponentViewMessage::Foo => todo!(),
+            CPUViewMessage::Update(cpu) => if let Ok(cpu) = cpu.lock() {
+                cx.set_source_rgba(255.0, 255.0, 255.0, 255.0);
+                cx.paint().expect("Could not fill context");
+            },
+            CPUViewMessage::Resize((x, y)) => {
+                cx.set_source_rgba(255.0, 255.0, 255.0, 255.0);
+                cx.paint().expect("Could not fill context");
+            }
+            CPUViewMessage::None => {}
         }
     }
 
     view! {
         #[root]
         gtk::Box {
-            set_orientation: gtk::Orientation::Horizontal,
             set_spacing: 5,
             set_margin_all: 5,
-            append: model.memory_view.widget(),
-            append: model.register_view.widget(),
+            #[local_ref]
+            area -> gtk::DrawingArea {
+                set_vexpand: true,
+                set_hexpand: true,
+                connect_resize[sender] => move |_, x, y| {
+                    sender.input(CPUViewMessage::Resize((x, y)))
+                }
+            },
         },
     }
 }
 
-impl CPUView for ComponentView {
-    fn update(&self, cpu: Arc<Mutex<dyn CPUInterface>>) {
-        if let Ok(cpu) = cpu.lock() {
-            self.register_view.emit(RegMsg::UpdateRegisters(
-                (0..33)
-                    .map(|idx| cpu.get_register(FromPrimitive::from_i32(idx).unwrap()))
-                    .collect(),
-            ));
-            self.memory_view.emit(MemoryMsg::UpdateMemory(
-                (0..cpu.get_memory_size())
-                    .map(|idx| cpu.get_memory_byte(idx).unwrap())
-                    .collect(),
-            ));
-        }
+impl ComponentView {
+    fn draw_view(&mut self) {
     }
 }

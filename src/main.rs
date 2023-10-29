@@ -16,10 +16,10 @@ use relm4::gtk::traits::*;
 use relm4::prelude::*;
 use relm4_components::open_dialog::*;
 
+use ui_components::CPUViewMessage;
 use ui_components::component_view::ComponentView;
 use ui_components::header::{HeaderMsg, HeaderView};
 use ui_components::simple_view::SimpleView;
-use ui_components::CPUView;
 
 struct App {
     open_dialog: Controller<OpenDialog>,
@@ -31,7 +31,7 @@ struct App {
     cpu: Arc<Mutex<dyn CPUInterface>>,
     asm_view_buffer: gtk::TextBuffer,
     app_to_thread: Option<Sender<()>>,
-    cpu_unning: bool,
+    cpu_running: bool,
 }
 
 #[derive(Debug)]
@@ -113,7 +113,7 @@ impl Component for App {
             cpu: Arc::new(Mutex::new(SingleCycleCPU::new())),
             asm_view_buffer: gtk::TextBuffer::new(Some(&tag_table)),
             app_to_thread: None,
-            cpu_unning: false,
+            cpu_running: false,
         };
         let simple_widget = model.simple_view.widget();
         let component_widget = model.component_view.widget();
@@ -152,7 +152,7 @@ impl Component for App {
             }
             Msg::Run => {
                 let (app_tx, thread_rx) = mpsc::channel::<()>();
-                self.cpu_unning = true;
+                self.cpu_running = true;
 
                 self.app_to_thread = Some(app_tx);
                 let cpu_copy = self.cpu.clone();
@@ -204,8 +204,8 @@ impl Component for App {
                 };
             }
             Msg::UpdateViews => {
-                self.simple_view.model().update(self.cpu.clone());
-                self.component_view.model().update(self.cpu.clone());
+                self.simple_view.emit(CPUViewMessage::Update(self.cpu.clone()));
+                self.component_view.emit(CPUViewMessage::Update(self.cpu.clone()));
             }
             Msg::Ignore => {}
         }
@@ -219,7 +219,7 @@ impl Component for App {
     ) {
         match message {
             CommandMsg::ThreadFinished => {
-                self.cpu_unning = false;
+                self.cpu_running = false;
                 sender.input(Msg::UpdateViews);
                 if let Ok(cpu) = self.cpu.lock() {
                     if let Some(error) = cpu.get_error() {
@@ -283,35 +283,35 @@ impl Component for App {
                     gtk::Button {
                         set_label: "Load File",
                         #[watch]
-                        set_sensitive: !model.cpu_unning,
+                        set_sensitive: !model.cpu_running,
                         connect_clicked => Msg::OpenRequest,
                     },
 
                     gtk::Button {
                         set_label: "Step",
                         #[watch]
-                        set_sensitive: !model.cpu_unning,
+                        set_sensitive: !model.cpu_running,
                         connect_clicked => Msg::Step,
                     },
 
                     gtk::Button {
                         set_label: "Run",
                         #[watch]
-                        set_sensitive: !model.cpu_unning,
+                        set_sensitive: !model.cpu_running,
                         connect_clicked => Msg::Run,
                     },
 
                     gtk::Button {
                         set_label: "Break",
                         #[watch]
-                        set_sensitive: model.cpu_unning,
+                        set_sensitive: model.cpu_running,
                         connect_clicked => Msg::Break,
                     },
 
                     gtk::Button {
                         set_label: "Reset",
                         #[watch]
-                        set_sensitive: !model.cpu_unning,
+                        set_sensitive: !model.cpu_running,
                         connect_clicked => Msg::ResetSimulation,
                     },
                 }

@@ -1,28 +1,18 @@
-use std::sync::{Arc, Mutex};
-
+use super::column_views::{memory_view::*, register_view::*};
+use super::CPUViewMessage;
 use gtk::prelude::*;
 use num::FromPrimitive;
 use relm4::gtk::traits::BoxExt;
 use relm4::prelude::*;
-
-use crate::cpu::cpu_interface::CPUInterface;
-
-use super::column_views::{memory_view::*, register_view::*};
-use super::CPUView;
 
 pub struct SimpleView {
     register_view: Controller<RegisterView>,
     memory_view: Controller<MemoryView>,
 }
 
-#[derive(Debug)]
-pub enum SimpleViewMessage {
-    Foo,
-}
-
 #[relm4::component(pub)]
 impl SimpleComponent for SimpleView {
-    type Input = SimpleViewMessage;
+    type Input = CPUViewMessage;
     type Output = ();
     type Init = ();
 
@@ -33,11 +23,11 @@ impl SimpleComponent for SimpleView {
     ) -> ComponentParts<Self> {
         let register_view: Controller<RegisterView> = RegisterView::builder()
             .launch(())
-            .forward(sender.input_sender(), |_| SimpleViewMessage::Foo);
+            .forward(sender.input_sender(), |_| CPUViewMessage::None);
 
         let memory_view: Controller<MemoryView> = MemoryView::builder()
             .launch(())
-            .forward(sender.input_sender(), |_| SimpleViewMessage::Foo);
+            .forward(sender.input_sender(), |_| CPUViewMessage::None);
 
         let model = SimpleView {
             register_view,
@@ -49,7 +39,22 @@ impl SimpleComponent for SimpleView {
 
     fn update(&mut self, msg: Self::Input, _sender: ComponentSender<Self>) {
         match msg {
-            SimpleViewMessage::Foo => todo!(),
+            CPUViewMessage::Update(cpu) => {
+                if let Ok(cpu) = cpu.lock() {
+                    self.register_view.emit(RegMsg::UpdateRegisters(
+                        (0..33)
+                            .map(|idx| cpu.get_register(FromPrimitive::from_i32(idx).unwrap()))
+                            .collect(),
+                    ));
+                    self.memory_view.emit(MemoryMsg::UpdateMemory(
+                        (0..cpu.get_memory_size())
+                            .map(|idx| cpu.get_memory_byte(idx).unwrap())
+                            .collect(),
+                    ));
+                }
+            }
+            CPUViewMessage::Resize(_) => {}
+            CPUViewMessage::None => {}
         }
     }
 
@@ -62,22 +67,5 @@ impl SimpleComponent for SimpleView {
             append: model.register_view.widget(),
             append: model.memory_view.widget(),
         },
-    }
-}
-
-impl CPUView for SimpleView {
-    fn update(&self, cpu: Arc<Mutex<dyn CPUInterface>>) {
-        if let Ok(cpu) = cpu.lock() {
-            self.register_view.emit(RegMsg::UpdateRegisters(
-                (0..33)
-                    .map(|idx| cpu.get_register(FromPrimitive::from_i32(idx).unwrap()))
-                    .collect(),
-            ));
-            self.memory_view.emit(MemoryMsg::UpdateMemory(
-                (0..cpu.get_memory_size())
-                    .map(|idx| cpu.get_memory_byte(idx).unwrap())
-                    .collect(),
-            ));
-        }
     }
 }
