@@ -1,4 +1,7 @@
+use std::sync::MutexGuard;
+
 use super::CPUViewMessage;
+use super::CPUInterface;
 use gtk::prelude::*;
 use relm4::drawing::DrawHandler;
 use relm4::gtk::cairo::{Context, Operator};
@@ -62,6 +65,6 @@ impl SimpleComponent for ComponentView {
 }
 
 impl ComponentView {
-    fn draw_view(&mut self) {
+    fn draw_view(&mut self, cpu: MutexGuard<dyn CPUInterface>) {
     }
 }
