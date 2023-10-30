@@ -7,9 +7,20 @@ edition = "2021"
 num = "0.4.0"
 num-derive = "0.4.0"
 num-traits = "0.2.15"
-relm4 = { version = "0.7.0-beta.1", features = ["libadwaita", "gnome_43"] }
-relm4-components = "0.7.0-beta.1"
-mips_assembler = { git = "https://github.com/A1029384756/mips_assembler", branch = "master" }
+relm4-components = "0.7.0-beta.2"
+libadwaita = { version = "0.5.3", features = [ "v1_4" ] }
+
+[dependencies.relm4]
+version = "0.7.0-beta.1"
+features = ["libadwaita", "gnome_44"]
+
+[dependencies.relm4-icons]
+version = "0.7.0-alpha.2"
+features = ["table", "hourglass"]
+
+[dependencies.mips_assembler]
+git = "https://github.com/A1029384756/mips_assembler"
+branch = "master"
 
 [[bin]]
 name = "simmips_gui"

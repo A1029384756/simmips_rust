@@ -4,7 +4,6 @@ use crate::cpu::cpu_interface::CPUInterface;
 
 pub mod column_views;
 pub mod component_view;
-pub mod header;
 pub mod simple_view;
 
 #[derive(Debug)]

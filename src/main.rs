@@ -15,15 +15,14 @@ use relm4::gtk::glib::clone;
 use relm4::gtk::traits::*;
 use relm4::prelude::*;
 use relm4_components::open_dialog::*;
+use relm4_icons::icon_name;
 
-use ui_components::CPUViewMessage;
 use ui_components::component_view::ComponentView;
-use ui_components::header::{HeaderMsg, HeaderView};
 use ui_components::simple_view::SimpleView;
+use ui_components::CPUViewMessage;
 
 struct App {
     open_dialog: Controller<OpenDialog>,
-    header: Controller<HeaderView>,
     simple_view: Controller<SimpleView>,
     component_view: Controller<ComponentView>,
 
@@ -79,14 +78,6 @@ impl Component for App {
                 OpenDialogResponse::Cancel => Msg::Ignore,
             });
 
-        let header =
-            HeaderView::builder()
-                .launch(())
-                .forward(sender.input_sender(), |msg| match msg {
-                    HeaderMsg::SimpleView => Msg::SetMode(AppMode::SimpleView),
-                    HeaderMsg::ComponentView => Msg::SetMode(AppMode::ComponentView),
-                });
-
         let simple_view = SimpleView::builder()
             .launch(())
             .forward(sender.input_sender(), |_| Msg::Ignore);
@@ -108,15 +99,12 @@ impl Component for App {
             open_dialog,
             simple_view,
             component_view,
-            header,
             mode: AppMode::SimpleView,
             cpu: Arc::new(Mutex::new(SingleCycleCPU::new())),
             asm_view_buffer: gtk::TextBuffer::new(Some(&tag_table)),
             app_to_thread: None,
             cpu_running: false,
         };
-        let simple_widget = model.simple_view.widget();
-        let component_widget = model.component_view.widget();
 
         let widgets = view_output!();
 
@@ -204,8 +192,10 @@ impl Component for App {
                 };
             }
             Msg::UpdateViews => {
-                self.simple_view.emit(CPUViewMessage::Update(self.cpu.clone()));
-                self.component_view.emit(CPUViewMessage::Update(self.cpu.clone()));
+                self.simple_view
+                    .emit(CPUViewMessage::Update(self.cpu.clone()));
+                self.component_view
+                    .emit(CPUViewMessage::Update(self.cpu.clone()));
             }
             Msg::Ignore => {}
         }
@@ -231,46 +221,56 @@ impl Component for App {
     }
 
     view! {
-        gtk::Window {
-            set_title: Some("MIPS Simulator"),
-            set_default_size: (800, 600),
-            set_titlebar: Some(model.header.widget()),
+        adw::ApplicationWindow {
+            set_default_width: 1000,
+            set_default_height: 650,
 
             gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
-                set_spacing: 5,
-                set_margin_all: 5,
+                set_hexpand: true,
 
-                gtk::Box {
-                    set_orientation: gtk::Orientation::Horizontal,
-                    set_spacing: 5,
-                    set_margin_all: 5,
+                adw::HeaderBar {
+                    #[wrap(Some)]
+                    set_title_widget = &adw::ViewSwitcher {
+                        set_stack: Some(&stack),
+                    },
+                },
 
-                    gtk::ScrolledWindow {
-                        set_min_content_height: 400,
-
+                adw::NavigationSplitView {
+                    set_vexpand: true,
+                    #[wrap(Some)]
+                    set_sidebar = &adw::NavigationPage {
+                        set_title: "Assembly",
                         #[wrap(Some)]
-                        set_child = &gtk::TextView {
-                            set_hexpand: true,
-                            set_vexpand: true,
-                            set_margin_all: 5,
-                            set_editable: false,
-                            set_monospace: true,
-                            set_cursor_visible: false,
-                            set_buffer: Some(&model.asm_view_buffer),
+                        set_child = &gtk::ScrolledWindow {
+                            set_min_content_height: 400,
+
+                            #[wrap(Some)]
+                            set_child = &gtk::TextView {
+                                set_hexpand: true,
+                                set_vexpand: true,
+                                set_editable: false,
+                                set_monospace: true,
+                                set_cursor_visible: false,
+                                set_buffer: Some(&model.asm_view_buffer),
+                            },
                         },
                     },
 
-                    #[transition = "SlideLeftRight"]
-                    match model.mode {
-                        AppMode::SimpleView => gtk::Box {
-                            #[local_ref]
-                            simple_widget -> gtk::Box {},
-                        }
-                        AppMode::ComponentView => gtk::Box {
-                            #[local_ref]
-                            component_widget -> gtk::Box {},
-                        }
+                    #[wrap(Some)]
+                    set_content = &adw::NavigationPage {
+                        set_title: "State",
+                        #[wrap(Some)]
+                        #[name = "stack"]
+                        set_child = &adw::ViewStack {
+                            set_vexpand: true,
+                            add_titled[Some("Simple"), "Simple"] = model.simple_view.widget() {} -> {
+                                set_icon_name: Some(icon_name::TABLE),
+                            },
+                            add_titled[Some("Component"), "Component"] = model.component_view.widget() {} -> {
+                                set_icon_name: Some(icon_name::TABLE),
+                            },
+                        },
                     },
                 },
 
@@ -322,5 +322,6 @@ impl Component for App {
 
 fn main() {
     let app = RelmApp::new("org.simmips.gui");
+    relm4_icons::initialize_icons();
     app.run::<App>(());
 }
