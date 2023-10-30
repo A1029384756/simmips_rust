@@ -44,7 +44,6 @@ pub enum Msg {
     ShowMessage(String),
     SetMode(AppMode),
     ToggleSidebar,
-    ResetSidebar,
 }
 
 #[derive(Debug)]
@@ -199,7 +198,6 @@ impl Component for App {
                     .emit(CPUViewMessage::Update(self.cpu.clone()));
             }
             Msg::ToggleSidebar => self.sidebar_visible = !self.sidebar_visible,
-            Msg::ResetSidebar => self.sidebar_visible = false,
             Msg::Ignore => {}
         }
     }
@@ -225,39 +223,29 @@ impl Component for App {
 
     view! {
         adw::ApplicationWindow {
-            set_size_request: (400, 500),
-            set_default_size: (999, 650),
+            set_size_request: (500, 500),
+            set_default_size: (1000, 650),
 
             add_breakpoint = adw::Breakpoint::new(adw::BreakpointCondition::new_length(
                 adw::BreakpointConditionLengthType::MaxWidth,
-                1000.0,
+                1200.0,
                 adw::LengthUnit::Sp,
             )) {
+                connect_apply => Msg::ToggleSidebar,
                 add_setter: (
                     &split_view,
                     "collapsed",
                     &true.into(),
                 ),
-                add_setter: (
-                    &show_sidebar,
-                    "visible",
-                    &true.into(),
-                ),
-                connect_apply => Msg::ResetSidebar,
             },
             add_breakpoint = adw::Breakpoint::new(adw::BreakpointCondition::new_length(
                 adw::BreakpointConditionLengthType::MinWidth,
-                1000.0,
+                1200.0,
                 adw::LengthUnit::Sp,
             )) {
                 add_setter: (
                     &show_sidebar,
                     "visible",
-                    &false.into(),
-                ),
-                add_setter: (
-                    &show_sidebar,
-                    "active",
                     &false.into(),
                 ),
             },
@@ -276,7 +264,6 @@ impl Component for App {
                         #[name = "show_sidebar"]
                         pack_start = &gtk::ToggleButton {
                             set_icon_name: "sidebar-show-symbolic",
-                            set_visible: false,
                             connect_clicked => Msg::ToggleSidebar,
                         },
                     },
@@ -284,11 +271,10 @@ impl Component for App {
                     #[wrap(Some)]
                     #[name = "split_view"]
                     set_content = &adw::OverlaySplitView {
-                        set_min_sidebar_width: 300.0,
-                        set_sidebar_width_fraction: 0.45,
+                        set_min_sidebar_width: 500.0,
                         set_vexpand: true,
                         #[watch]
-                        set_show_sidebar: model.sidebar_visible,
+                        set_show_sidebar: show_sidebar.is_active(),
                         #[wrap(Some)]
                         set_sidebar = &adw::NavigationPage {
                             set_title: "Assembly",
