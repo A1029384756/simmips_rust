@@ -1,5 +1,4 @@
 use crate::ui_components::column_views::Radices;
-use crate::ui_components::column_views::Radices::{Binary, Hex, Decimal};
 use relm4::{gtk::traits::WidgetExt, prelude::*};
 use relm4::{
     typed_view::column::{LabelColumn, TypedColumnView},
