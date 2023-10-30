@@ -148,7 +148,7 @@ impl Component for App {
                 let cpu_copy = self.cpu.clone();
                 sender.oneshot_command(async move {
                     if let Ok(mut cpu) = cpu_copy.lock() {
-                        while let None = cpu.get_error() {
+                        while cpu.get_error().is_none() {
                             cpu.step();
                             if thread_rx.try_recv().is_ok() {
                                 break;
