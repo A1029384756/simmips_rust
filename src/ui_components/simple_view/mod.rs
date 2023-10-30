@@ -53,6 +53,10 @@ impl SimpleComponent for SimpleView {
                     ));
                 }
             }
+            CPUViewMessage::ChangeRadix(radix) => {
+                self.register_view.emit(RegMsg::UpdateRadix(radix));
+                self.memory_view.emit(MemoryMsg::UpdateRadix(radix));
+            }
             CPUViewMessage::Resize(_) => {}
             CPUViewMessage::None => {}
         }

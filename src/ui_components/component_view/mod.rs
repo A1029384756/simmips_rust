@@ -43,6 +43,7 @@ impl SimpleComponent for ComponentView {
                 cx.set_source_rgba(255.0, 255.0, 255.0, 255.0);
                 cx.paint().expect("Could not fill context");
             }
+            CPUViewMessage::ChangeRadix(_) => {}
             CPUViewMessage::None => {}
         }
     }

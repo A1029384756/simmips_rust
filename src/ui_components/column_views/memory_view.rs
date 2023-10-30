@@ -1,14 +1,16 @@
-use crate::ui_components::column_views::RadixValues;
-use crate::ui_components::column_views::RadixValues::{BINARY, HEX};
+use crate::ui_components::column_views::Radices;
+use crate::ui_components::column_views::Radices::{Binary, Hex, Decimal};
 use relm4::{gtk::traits::WidgetExt, prelude::*};
 use relm4::{
     typed_view::column::{LabelColumn, TypedColumnView},
     ComponentParts, ComponentSender, SimpleComponent,
 };
 
+use super::RadixedValue;
+
 pub struct MemoryRow {
     addr: u32,
-    value: String,
+    value: RadixedValue<u8>,
 }
 
 pub struct AddressColumn;
@@ -36,25 +38,33 @@ pub struct MemoryColumn;
 impl LabelColumn for MemoryColumn {
     type Item = MemoryRow;
 
-    type Value = String;
+    type Value = RadixedValue<u8>;
 
     const COLUMN_NAME: &'static str = "Memory Contents";
 
     const ENABLE_SORT: bool = false;
 
     fn get_cell_value(item: &Self::Item) -> Self::Value {
-        item.value.clone()
+        item.value
+    }
+
+    fn format_cell_value(value: &Self::Value) -> String {
+        match value.radix {
+            Radices::Binary => format!("0b{:032b}", value.value),
+            Radices::Hex => format!("0x{:08x}", value.value),
+            Radices::Decimal => format!("{:010}", value.value),
+        }
     }
 }
 
 pub struct MemoryView {
-    radix: RadixValues,
     view_wrapper: TypedColumnView<MemoryRow, gtk::NoSelection>,
 }
 
 #[derive(Debug)]
 pub enum MemoryMsg {
     UpdateMemory(Vec<u8>),
+    UpdateRadix(Radices),
 }
 
 #[relm4::component(pub)]
@@ -79,12 +89,14 @@ impl SimpleComponent for MemoryView {
         (0..1024).for_each(|idx| {
             view_wrapper.append(MemoryRow {
                 addr: idx,
-                value: "0x00000000".to_owned(),
+                value: RadixedValue {
+                    radix: Radices::Hex,
+                    value: 0,
+                },
             });
         });
 
         let model = MemoryView {
-            radix: RadixValues::HEX,
             view_wrapper,
         };
 
@@ -98,18 +110,34 @@ impl SimpleComponent for MemoryView {
     fn update(&mut self, msg: Self::Input, _sender: ComponentSender<Self>) {
         match msg {
             MemoryMsg::UpdateMemory(new_mem) => {
+                let v = self.view_wrapper.get(0);
+                let radix = v.iter().next().unwrap().borrow().value.radix;
+
                 self.view_wrapper.clear();
                 new_mem.into_iter().enumerate().for_each(|(idx, val)| {
                     self.view_wrapper.append(MemoryRow {
                         addr: idx as u32,
-                        value: match self.radix {
-                            RadixValues::BINARY => format!("0b{:08b}", val),
-                            RadixValues::HEX => format!("0x{:08x}", val),
-                            RadixValues::DECIMAL => format!("{:08}", val),
-                        },
+                        value: RadixedValue { radix, value: val }
                     });
                 })
             }
+            MemoryMsg::UpdateRadix(radix) => {
+                let mut new_list: Vec<u8> = Vec::new();
+
+                (0..self.view_wrapper.len()).for_each(|v| {
+                    self.view_wrapper.get(v).iter().for_each(|rv| {
+                        new_list.push(rv.borrow().value.value);
+                    });
+                });
+
+                self.view_wrapper.clear();
+                new_list.iter().enumerate().for_each(|(idx, val)| {
+                    self.view_wrapper.append(MemoryRow {
+                        addr: idx as u32,
+                        value: RadixedValue { radix, value: *val },
+                    });
+                });
+            },
         }
     }
 

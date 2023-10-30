@@ -19,6 +19,8 @@ use ui_components::component_view::ComponentView;
 use ui_components::simple_view::SimpleView;
 use ui_components::CPUViewMessage;
 
+use crate::ui_components::column_views::Radices;
+
 struct App {
     open_dialog: Controller<OpenDialog>,
     simple_view: Controller<SimpleView>,
@@ -43,6 +45,7 @@ pub enum Msg {
     UpdateViews,
     ShowMessage(String),
     SetMode(AppMode),
+    ChangeRadix(Radices),
     ToggleSidebar,
 }
 
@@ -198,6 +201,10 @@ impl Component for App {
                     .emit(CPUViewMessage::Update(self.cpu.clone()));
             }
             Msg::ToggleSidebar => self.sidebar_visible = !self.sidebar_visible,
+            Msg::ChangeRadix(radix) => {
+                self.simple_view.emit(CPUViewMessage::ChangeRadix(radix));
+                self.component_view.emit(CPUViewMessage::ChangeRadix(radix));
+            },
             Msg::Ignore => {}
         }
     }
@@ -222,140 +229,150 @@ impl Component for App {
     }
 
     view! {
-        adw::ApplicationWindow {
-            set_size_request: (500, 500),
-            set_default_size: (1000, 650),
+            adw::ApplicationWindow {
+                set_size_request: (500, 500),
+                set_default_size: (1000, 650),
 
-            add_breakpoint = adw::Breakpoint::new(adw::BreakpointCondition::new_length(
-                adw::BreakpointConditionLengthType::MaxWidth,
-                1200.0,
-                adw::LengthUnit::Sp,
-            )) {
-                connect_apply => Msg::ToggleSidebar,
-                add_setter: (
-                    &split_view,
-                    "collapsed",
-                    &true.into(),
-                ),
-            },
-            add_breakpoint = adw::Breakpoint::new(adw::BreakpointCondition::new_length(
-                adw::BreakpointConditionLengthType::MinWidth,
-                1200.0,
-                adw::LengthUnit::Sp,
-            )) {
-                add_setter: (
-                    &show_sidebar,
-                    "visible",
-                    &false.into(),
-                ),
-            },
-
-            gtk::Box {
-                set_orientation: gtk::Orientation::Vertical,
-                set_hexpand: true,
-
-                adw::ToolbarView {
-                    set_top_bar_style: adw::ToolbarStyle::Raised,
-                    add_top_bar = &adw::HeaderBar {
-                        #[wrap(Some)]
-                        set_title_widget = &adw::ViewSwitcher {
-                                set_stack: Some(&stack),
-                        },
-                        #[name = "show_sidebar"]
-                        pack_start = &gtk::ToggleButton {
-                            set_icon_name: "sidebar-show-symbolic",
-                            connect_clicked => Msg::ToggleSidebar,
-                        },
-                    },
-
-                    #[wrap(Some)]
-                    #[name = "split_view"]
-                    set_content = &adw::OverlaySplitView {
-                        set_min_sidebar_width: 500.0,
-                        set_vexpand: true,
-                        #[watch]
-                        set_show_sidebar: show_sidebar.is_active(),
-                        #[wrap(Some)]
-                        set_sidebar = &adw::NavigationPage {
-                            set_title: "Assembly",
-                            #[wrap(Some)]
-                            set_child = &gtk::ScrolledWindow {
-                                set_min_content_height: 400,
-
-                                #[wrap(Some)]
-                                set_child = &gtk::TextView {
-                                    set_hexpand: true,
-                                    set_vexpand: true,
-                                    set_editable: false,
-                                    set_monospace: true,
-                                    set_cursor_visible: false,
-                                    set_buffer: Some(&model.asm_view_buffer),
-                                },
-                            },
-                        },
-
-                        #[wrap(Some)]
-                        set_content = &adw::NavigationPage {
-                            set_title: "State",
-                            #[wrap(Some)]
-                            #[name = "stack"]
-                            set_child = &adw::ViewStack {
-                                set_vexpand: true,
-                                add_titled[Some("Simple"), "Simple"] = model.simple_view.widget() {} -> {
-                                    set_icon_name: Some(icon_name::TABLE),
-                                },
-                                add_titled[Some("Component"), "Component"] = model.component_view.widget() {} -> {
-                                    set_icon_name: Some(icon_name::TABLE),
-                                },
-                            },
-                        },
-                    },
+                add_breakpoint = adw::Breakpoint::new(adw::BreakpointCondition::new_length(
+                    adw::BreakpointConditionLengthType::MaxWidth,
+                    1200.0,
+                    adw::LengthUnit::Sp,
+                )) {
+                    connect_apply => Msg::ToggleSidebar,
+                    add_setter: (
+                        &split_view,
+                        "collapsed",
+                        &true.into(),
+                    ),
+                },
+                add_breakpoint = adw::Breakpoint::new(adw::BreakpointCondition::new_length(
+                    adw::BreakpointConditionLengthType::MinWidth,
+                    1200.0,
+                    adw::LengthUnit::Sp,
+                )) {
+                    add_setter: (
+                        &show_sidebar,
+                        "visible",
+                        &false.into(),
+                    ),
                 },
 
                 gtk::Box {
-                    set_orientation: gtk::Orientation::Horizontal,
-                    set_spacing: 5,
-                    set_margin_all: 5,
+                    set_orientation: gtk::Orientation::Vertical,
                     set_hexpand: true,
 
-                    gtk::Button {
-                        set_label: "Load File",
-                        #[watch]
-                        set_sensitive: !model.cpu_running,
-                        connect_clicked => Msg::OpenRequest,
+                    adw::ToolbarView {
+                        set_top_bar_style: adw::ToolbarStyle::Raised,
+                        add_top_bar = &adw::HeaderBar {
+                            #[wrap(Some)]
+                            set_title_widget = &adw::ViewSwitcher {
+                                    set_stack: Some(&stack),
+                            },
+                            #[name = "show_sidebar"]
+                            pack_start = &gtk::ToggleButton {
+                                set_icon_name: "sidebar-show-symbolic",
+                                connect_clicked => Msg::ToggleSidebar,
+                            },
+                            pack_end = &gtk::DropDown::from_strings(&["Hex", "Binary", "Decimal"]) {
+                                connect_selected_item_notify[sender] => move |val| {
+                                    match val.selected() {
+                                        0 => sender.input(Msg::ChangeRadix(Radices::Hex)),
+                                        1 => sender.input(Msg::ChangeRadix(Radices::Binary)),
+                                        2 => sender.input(Msg::ChangeRadix(Radices::Decimal)),
+                                        _ => panic!("Invalid radix"),
+                                    }
+                                },
+                            },
+                        },
+
+                        #[wrap(Some)]
+                        #[name = "split_view"]
+                        set_content = &adw::OverlaySplitView {
+                            set_min_sidebar_width: 500.0,
+                            set_vexpand: true,
+                            #[watch]
+                            set_show_sidebar: show_sidebar.is_active(),
+                            #[wrap(Some)]
+                            set_sidebar = &adw::NavigationPage {
+                                set_title: "Assembly",
+                                #[wrap(Some)]
+                                set_child = &gtk::ScrolledWindow {
+                                    set_min_content_height: 400,
+
+                                    #[wrap(Some)]
+                                    set_child = &gtk::TextView {
+                                        set_hexpand: true,
+                                        set_vexpand: true,
+                                        set_editable: false,
+                                        set_monospace: true,
+                                        set_cursor_visible: false,
+                                        set_buffer: Some(&model.asm_view_buffer),
+                                    },
+                                },
+                            },
+
+                            #[wrap(Some)]
+                            set_content = &adw::NavigationPage {
+                                set_title: "State",
+                                #[wrap(Some)]
+                                #[name = "stack"]
+                                set_child = &adw::ViewStack {
+                                    set_vexpand: true,
+                                    add_titled[Some("Simple"), "Simple"] = model.simple_view.widget() {} -> {
+                                        set_icon_name: Some(icon_name::TABLE),
+                                    },
+                                    add_titled[Some("Component"), "Component"] = model.component_view.widget() {} -> {
+                                        set_icon_name: Some(icon_name::TABLE),
+                                    },
+                                },
+                            },
+                        },
                     },
 
-                    gtk::Button {
-                        set_label: "Step",
-                        #[watch]
-                        set_sensitive: !model.cpu_running,
-                        connect_clicked => Msg::Step,
-                    },
+                    gtk::Box {
+                        set_orientation: gtk::Orientation::Horizontal,
+                        set_spacing: 5,
+                        set_margin_all: 5,
+                        set_hexpand: true,
 
-                    gtk::Button {
-                        set_label: "Run",
-                        #[watch]
-                        set_sensitive: !model.cpu_running,
-                        connect_clicked => Msg::Run,
-                    },
+                        gtk::Button {
+                            set_label: "Load File",
+                            #[watch]
+                            set_sensitive: !model.cpu_running,
+                            connect_clicked => Msg::OpenRequest,
+                        },
 
-                    gtk::Button {
-                        set_label: "Break",
-                        #[watch]
-                        set_sensitive: model.cpu_running,
-                        connect_clicked => Msg::Break,
-                    },
+                        gtk::Button {
+                            set_label: "Step",
+                            #[watch]
+                            set_sensitive: !model.cpu_running,
+                            connect_clicked => Msg::Step,
+                        },
 
-                    gtk::Button {
-                        set_label: "Reset",
-                        #[watch]
-                        set_sensitive: !model.cpu_running,
-                        connect_clicked => Msg::ResetSimulation,
-                    },
+                        gtk::Button {
+                            set_label: "Run",
+                            #[watch]
+                            set_sensitive: !model.cpu_running,
+                            connect_clicked => Msg::Run,
+                        },
+
+                        gtk::Button {
+                            set_label: "Break",
+                            #[watch]
+                            set_sensitive: model.cpu_running,
+                            connect_clicked => Msg::Break,
+                        },
+
+                        gtk::Button {
+                            set_label: "Reset",
+                            #[watch]
+                            set_sensitive: !model.cpu_running,
+                            connect_clicked => Msg::ResetSimulation,
+                        },
+                    }
                 }
             }
         }
-    }
 }
 
 fn main() {

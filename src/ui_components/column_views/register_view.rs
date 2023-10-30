@@ -1,4 +1,5 @@
-use crate::ui_components::column_views::RadixValues;
+use super::RadixedValue;
+use crate::ui_components::column_views::Radices;
 use relm4::{gtk::traits::WidgetExt, prelude::*};
 use relm4::{
     typed_view::column::{LabelColumn, TypedColumnView},
@@ -17,10 +18,11 @@ const REG_ALIAS: [&str; 33] = [
     "$t9", "$k0", "$k1", "$gp", "$sp", "$fp", "$ra",
 ];
 
+#[derive(Debug)]
 pub struct RegisterRow {
     reg_num: &'static str,
     reg_alias: &'static str,
-    reg_val: String,
+    reg_val: RadixedValue<u32>,
 }
 
 pub struct RegNumColumn;
@@ -60,25 +62,33 @@ pub struct RegisterColumn;
 impl LabelColumn for RegisterColumn {
     type Item = RegisterRow;
 
-    type Value = String;
+    type Value = RadixedValue<u32>;
 
     const COLUMN_NAME: &'static str = "Register Contents";
 
     const ENABLE_SORT: bool = false;
 
     fn get_cell_value(item: &Self::Item) -> Self::Value {
-        item.reg_val.clone()
+        item.reg_val
+    }
+
+    fn format_cell_value(value: &Self::Value) -> String {
+        match value.radix {
+            Radices::Binary => format!("0b{:032b}", value.value),
+            Radices::Hex => format!("0x{:08x}", value.value),
+            Radices::Decimal => format!("{:010}", value.value),
+        }
     }
 }
 
 pub struct RegisterView {
-    radix: RadixValues,
     view_wrapper: TypedColumnView<RegisterRow, gtk::NoSelection>,
 }
 
 #[derive(Debug)]
 pub enum RegMsg {
     UpdateRegisters(Vec<u32>),
+    UpdateRadix(Radices),
 }
 
 #[relm4::component(pub)]
@@ -105,14 +115,14 @@ impl SimpleComponent for RegisterView {
             view_wrapper.append(RegisterRow {
                 reg_num: REG_NUMBERS[idx],
                 reg_alias: REG_ALIAS[idx],
-                reg_val: "0x00000000".to_owned(),
+                reg_val: RadixedValue {
+                    radix: Radices::Hex,
+                    value: 0,
+                },
             });
         });
 
-        let model = RegisterView {
-            radix: RadixValues::HEX,
-            view_wrapper,
-        };
+        let model = RegisterView { view_wrapper };
 
         let my_view = &model.view_wrapper.view;
         my_view.set_show_row_separators(true);
@@ -124,6 +134,9 @@ impl SimpleComponent for RegisterView {
     fn update(&mut self, msg: Self::Input, _: ComponentSender<Self>) {
         match msg {
             RegMsg::UpdateRegisters(new_registers) => {
+                let v = self.view_wrapper.get(0);
+                let radix = v.iter().next().unwrap().borrow().reg_val.radix;
+
                 self.view_wrapper.clear();
                 let mut back = new_registers[..32].to_owned();
                 let mut front = new_registers[32..].to_owned();
@@ -135,11 +148,25 @@ impl SimpleComponent for RegisterView {
                     self.view_wrapper.append(RegisterRow {
                         reg_num: REG_NUMBERS[idx],
                         reg_alias: REG_ALIAS[idx],
-                        reg_val: match self.radix {
-                            RadixValues::BINARY => format!("0b{:08x}", *val),
-                            RadixValues::HEX => format!("0x{:08x}", *val),
-                            RadixValues::DECIMAL => format!("{:08}", *val),
-                        },
+                        reg_val: RadixedValue { radix, value: *val },
+                    });
+                });
+            }
+            RegMsg::UpdateRadix(radix) => {
+                let mut new_list: Vec<u32> = Vec::new();
+
+                (0..self.view_wrapper.len()).for_each(|v| {
+                    self.view_wrapper.get(v).iter().for_each(|rv| {
+                        new_list.push(rv.borrow().reg_val.value);
+                    });
+                });
+
+                self.view_wrapper.clear();
+                new_list.iter().enumerate().for_each(|(idx, val)| {
+                    self.view_wrapper.append(RegisterRow {
+                        reg_num: REG_NUMBERS[idx],
+                        reg_alias: REG_ALIAS[idx],
+                        reg_val: RadixedValue { radix, value: *val },
                     });
                 });
             }
