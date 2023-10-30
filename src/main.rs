@@ -1,21 +1,19 @@
 mod cpu;
 mod ui_components;
-mod utils;
 
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 use std::sync::{mpsc, Arc, Mutex};
 
-use mips_assembler::parse;
-
-use cpu::cpu_interface::CPUInterface;
-use cpu::single_cycle_cpu::SingleCycleCPU;
-use relm4::adw::traits::*;
-use relm4::gtk::glib::clone;
-use relm4::gtk::traits::*;
+use adw::prelude::*;
+use gtk::glib;
 use relm4::prelude::*;
 use relm4_components::open_dialog::*;
 use relm4_icons::icon_name;
+
+use cpu::cpu_interface::CPUInterface;
+use cpu::single_cycle_cpu::SingleCycleCPU;
+use mips_assembler::parse;
 
 use ui_components::component_view::ComponentView;
 use ui_components::simple_view::SimpleView;
@@ -25,12 +23,12 @@ struct App {
     open_dialog: Controller<OpenDialog>,
     simple_view: Controller<SimpleView>,
     component_view: Controller<ComponentView>,
-
     mode: AppMode,
     cpu: Arc<Mutex<dyn CPUInterface>>,
     asm_view_buffer: gtk::TextBuffer,
     app_to_thread: Option<Sender<()>>,
     cpu_running: bool,
+    sidebar_visible: bool,
 }
 
 #[derive(Debug)]
@@ -45,6 +43,8 @@ pub enum Msg {
     UpdateViews,
     ShowMessage(String),
     SetMode(AppMode),
+    ToggleSidebar,
+    ResetSidebar,
 }
 
 #[derive(Debug)]
@@ -104,6 +104,7 @@ impl Component for App {
             asm_view_buffer: gtk::TextBuffer::new(Some(&tag_table)),
             app_to_thread: None,
             cpu_running: false,
+            sidebar_visible: false,
         };
 
         let widgets = view_output!();
@@ -169,7 +170,7 @@ impl Component for App {
                 dialog.set_default_response(Some("Ok"));
                 dialog.connect_response(
                     None,
-                    clone!(@strong sender => move |dialog, _| {
+                    glib::clone!(@strong sender => move |dialog, _| {
                         dialog.close();
                     }),
                 );
@@ -197,6 +198,8 @@ impl Component for App {
                 self.component_view
                     .emit(CPUViewMessage::Update(self.cpu.clone()));
             }
+            Msg::ToggleSidebar => self.sidebar_visible = !self.sidebar_visible,
+            Msg::ResetSidebar => self.sidebar_visible = false,
             Msg::Ignore => {}
         }
     }
@@ -222,53 +225,102 @@ impl Component for App {
 
     view! {
         adw::ApplicationWindow {
-            set_default_width: 1000,
-            set_default_height: 650,
+            set_size_request: (400, 500),
+            set_default_size: (999, 650),
+
+            add_breakpoint = adw::Breakpoint::new(adw::BreakpointCondition::new_length(
+                adw::BreakpointConditionLengthType::MaxWidth,
+                1000.0,
+                adw::LengthUnit::Sp,
+            )) {
+                add_setter: (
+                    &split_view,
+                    "collapsed",
+                    &true.into(),
+                ),
+                add_setter: (
+                    &show_sidebar,
+                    "visible",
+                    &true.into(),
+                ),
+                connect_apply => Msg::ResetSidebar,
+            },
+            add_breakpoint = adw::Breakpoint::new(adw::BreakpointCondition::new_length(
+                adw::BreakpointConditionLengthType::MinWidth,
+                1000.0,
+                adw::LengthUnit::Sp,
+            )) {
+                add_setter: (
+                    &show_sidebar,
+                    "visible",
+                    &false.into(),
+                ),
+                add_setter: (
+                    &show_sidebar,
+                    "active",
+                    &false.into(),
+                ),
+            },
 
             gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
                 set_hexpand: true,
 
-                adw::HeaderBar {
-                    #[wrap(Some)]
-                    set_title_widget = &adw::ViewSwitcher {
-                        set_stack: Some(&stack),
-                    },
-                },
-
-                adw::NavigationSplitView {
-                    set_vexpand: true,
-                    #[wrap(Some)]
-                    set_sidebar = &adw::NavigationPage {
-                        set_title: "Assembly",
+                adw::ToolbarView {
+                    set_top_bar_style: adw::ToolbarStyle::Raised,
+                    add_top_bar = &adw::HeaderBar {
                         #[wrap(Some)]
-                        set_child = &gtk::ScrolledWindow {
-                            set_min_content_height: 400,
-
-                            #[wrap(Some)]
-                            set_child = &gtk::TextView {
-                                set_hexpand: true,
-                                set_vexpand: true,
-                                set_editable: false,
-                                set_monospace: true,
-                                set_cursor_visible: false,
-                                set_buffer: Some(&model.asm_view_buffer),
-                            },
+                        set_title_widget = &adw::ViewSwitcher {
+                                set_stack: Some(&stack),
+                        },
+                        #[name = "show_sidebar"]
+                        pack_start = &gtk::ToggleButton {
+                            set_icon_name: "sidebar-show-symbolic",
+                            set_visible: false,
+                            connect_clicked => Msg::ToggleSidebar,
                         },
                     },
 
                     #[wrap(Some)]
-                    set_content = &adw::NavigationPage {
-                        set_title: "State",
+                    #[name = "split_view"]
+                    set_content = &adw::OverlaySplitView {
+                        set_min_sidebar_width: 300.0,
+                        set_sidebar_width_fraction: 0.45,
+                        set_vexpand: true,
+                        #[watch]
+                        set_show_sidebar: model.sidebar_visible,
                         #[wrap(Some)]
-                        #[name = "stack"]
-                        set_child = &adw::ViewStack {
-                            set_vexpand: true,
-                            add_titled[Some("Simple"), "Simple"] = model.simple_view.widget() {} -> {
-                                set_icon_name: Some(icon_name::TABLE),
+                        set_sidebar = &adw::NavigationPage {
+                            set_title: "Assembly",
+                            #[wrap(Some)]
+                            set_child = &gtk::ScrolledWindow {
+                                set_min_content_height: 400,
+
+                                #[wrap(Some)]
+                                set_child = &gtk::TextView {
+                                    set_hexpand: true,
+                                    set_vexpand: true,
+                                    set_editable: false,
+                                    set_monospace: true,
+                                    set_cursor_visible: false,
+                                    set_buffer: Some(&model.asm_view_buffer),
+                                },
                             },
-                            add_titled[Some("Component"), "Component"] = model.component_view.widget() {} -> {
-                                set_icon_name: Some(icon_name::TABLE),
+                        },
+
+                        #[wrap(Some)]
+                        set_content = &adw::NavigationPage {
+                            set_title: "State",
+                            #[wrap(Some)]
+                            #[name = "stack"]
+                            set_child = &adw::ViewStack {
+                                set_vexpand: true,
+                                add_titled[Some("Simple"), "Simple"] = model.simple_view.widget() {} -> {
+                                    set_icon_name: Some(icon_name::TABLE),
+                                },
+                                add_titled[Some("Component"), "Component"] = model.component_view.widget() {} -> {
+                                    set_icon_name: Some(icon_name::TABLE),
+                                },
                             },
                         },
                     },
