@@ -290,7 +290,7 @@ impl Component for App {
                         set_min_sidebar_width: 500.0,
                         set_vexpand: true,
                         #[watch]
-                        set_show_sidebar: show_sidebar.is_active(),
+                        set_show_sidebar: show_sidebar.is_active() || !split_view.is_collapsed(),
                         #[wrap(Some)]
                         set_sidebar = &adw::NavigationPage {
                             set_title: "Assembly",
