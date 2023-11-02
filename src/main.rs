@@ -232,90 +232,57 @@ impl Component for App {
             set_size_request: (500, 500),
             set_default_size: (1000, 650),
 
-            add_breakpoint = adw::Breakpoint::new(adw::BreakpointCondition::new_length(
-                adw::BreakpointConditionLengthType::MaxWidth,
-                1200.0,
-                adw::LengthUnit::Sp,
-            )) {
-                connect_apply => Msg::ToggleSidebar,
-                add_setter: (
-                    &split_view,
-                    "collapsed",
-                    &true.into(),
-                ),
-            },
-            add_breakpoint = adw::Breakpoint::new(adw::BreakpointCondition::new_length(
-                adw::BreakpointConditionLengthType::MinWidth,
-                1200.0,
-                adw::LengthUnit::Sp,
-            )) {
-                add_setter: (
-                    &show_sidebar,
-                    "visible",
-                    &false.into(),
-                ),
-            },
-
             gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
                 set_hexpand: true,
 
-                adw::ToolbarView {
-                    set_top_bar_style: adw::ToolbarStyle::Raised,
-                    add_top_bar = &adw::HeaderBar {
-                        #[wrap(Some)]
-                        set_title_widget = &adw::ViewSwitcher {
-                                set_stack: Some(&stack),
-                        },
-                        #[name = "show_sidebar"]
-                        pack_start = &gtk::ToggleButton {
-                            set_icon_name: "sidebar-show-symbolic",
-                            connect_clicked => Msg::ToggleSidebar,
-                        },
-                        pack_end = &gtk::DropDown::from_strings(&["Hex", "Binary", "Decimal"]) {
-                            connect_selected_item_notify[sender] => move |val| {
-                                match val.selected() {
-                                    0 => sender.input(Msg::ChangeRadix(Radices::Hex)),
-                                    1 => sender.input(Msg::ChangeRadix(Radices::Binary)),
-                                    2 => sender.input(Msg::ChangeRadix(Radices::Decimal)),
-                                    _ => panic!("Invalid radix"),
-                                }
-                            },
+                adw::HeaderBar {
+                    #[wrap(Some)]
+                    set_title_widget = &adw::ViewSwitcher {
+                            set_stack: Some(&stack),
+                    },
+                    #[name = "toggle_sidebar"]
+                    pack_start = &gtk::ToggleButton {
+                        set_icon_name: "sidebar-show-symbolic",
+                        connect_clicked => Msg::ToggleSidebar,
+                    },
+                    pack_end = &gtk::DropDown::from_strings(&["Hex", "Binary", "Decimal"]) {
+                        connect_selected_item_notify[sender] => move |val| {
+                            match val.selected() {
+                                0 => sender.input(Msg::ChangeRadix(Radices::Hex)),
+                                1 => sender.input(Msg::ChangeRadix(Radices::Binary)),
+                                2 => sender.input(Msg::ChangeRadix(Radices::Decimal)),
+                                _ => panic!("Invalid radix"),
+                            }
                         },
                     },
+                },
 
-                    #[wrap(Some)]
-                    #[name = "split_view"]
-                    set_content = &adw::OverlaySplitView {
-                        set_min_sidebar_width: 500.0,
-                        set_vexpand: true,
+                #[name = "split_view"]
+                gtk::Box {
+                    set_vexpand: true,
+                    #[name = "flap"]
+                    adw::Flap {
                         #[watch]
-                        set_show_sidebar: show_sidebar.is_active() || !split_view.is_collapsed(),
+                        set_locked: toggle_sidebar.is_active(),
+                        #[watch]
+                        set_reveal_flap: model.sidebar_visible || !flap.is_folded(),
                         #[wrap(Some)]
-                        set_sidebar = &adw::NavigationPage {
-                            set_title: "Assembly",
-                            #[wrap(Some)]
-                            set_child = &gtk::ScrolledWindow {
-                                set_min_content_height: 400,
-
-                                #[wrap(Some)]
-                                set_child = &gtk::TextView {
-                                    set_hexpand: true,
-                                    set_vexpand: true,
-                                    set_editable: false,
-                                    set_monospace: true,
-                                    set_cursor_visible: false,
-                                    set_buffer: Some(&model.asm_view_buffer),
-                                },
+                        set_flap = &gtk::ScrolledWindow {
+                            set_width_request: 500,
+                            gtk::TextView {
+                                set_vexpand: true,
+                                set_editable: false,
+                                set_monospace: true,
+                                set_cursor_visible: false,
+                                set_buffer: Some(&model.asm_view_buffer),
                             },
                         },
-
                         #[wrap(Some)]
-                        set_content = &adw::NavigationPage {
-                            set_title: "State",
-                            #[wrap(Some)]
+                        set_content = &gtk::Box {
+                            set_width_request: 800,
                             #[name = "stack"]
-                            set_child = &adw::ViewStack {
+                            adw::ViewStack {
                                 set_vexpand: true,
                                 add_titled[Some("Simple"), "Simple"] = model.simple_view.widget() {} -> {
                                     set_icon_name: Some(icon_name::TABLE),
