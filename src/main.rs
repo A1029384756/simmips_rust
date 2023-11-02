@@ -247,7 +247,7 @@ impl Component for App {
                     pack_start = &gtk::ToggleButton {
                         #[watch]
                         set_active: model.sidebar_visible,
-                        set_icon_name: "sidebar-show-symbolic",
+                        set_icon_name: icon_name::DOCK_LEFT,
                         connect_clicked[sender] => move |val| {
                             match val.is_active() {
                                 true => sender.input(Msg::ShowSidebar),
@@ -296,7 +296,7 @@ impl Component for App {
                         },
                         #[wrap(Some)]
                         set_content = &gtk::Box {
-                            set_width_request: 800,
+                            set_width_request: 600,
                             #[name = "stack"]
                             adw::ViewStack {
                                 set_vexpand: true,
@@ -304,7 +304,7 @@ impl Component for App {
                                     set_icon_name: Some(icon_name::TABLE),
                                 },
                                 add_titled[Some("Component"), "Component"] = model.component_view.widget() {} -> {
-                                    set_icon_name: Some(icon_name::TABLE),
+                                    set_icon_name: Some(icon_name::OBJECT_PACKING),
                                 },
                             },
                         },

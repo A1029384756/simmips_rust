@@ -16,7 +16,7 @@ features = ["libadwaita", "gnome_44"]
 
 [dependencies.relm4-icons]
 version = "0.7.0-alpha.2"
-features = ["table", "hourglass"]
+features = ["table", "object-packing", "dock-left"]
 
 [dependencies.mips_assembler]
 git = "https://github.com/A1029384756/mips_assembler"
