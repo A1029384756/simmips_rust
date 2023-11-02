@@ -264,7 +264,7 @@ impl Component for App {
                     #[name = "flap"]
                     adw::Flap {
                         #[watch]
-                        set_locked: toggle_sidebar.is_active(),
+                        set_locked: model.sidebar_visible,
                         #[watch]
                         set_reveal_flap: model.sidebar_visible || !flap.is_folded(),
                         #[wrap(Some)]
