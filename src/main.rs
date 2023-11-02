@@ -45,7 +45,8 @@ pub enum Msg {
     ShowMessage(String),
     SetMode(AppMode),
     ChangeRadix(Radices),
-    ToggleSidebar,
+    ShowSidebar,
+    HideSidebar,
 }
 
 #[derive(Debug)]
@@ -199,7 +200,8 @@ impl Component for App {
                 self.component_view
                     .emit(CPUViewMessage::Update(self.cpu.clone()));
             }
-            Msg::ToggleSidebar => self.sidebar_visible = !self.sidebar_visible,
+            Msg::ShowSidebar => self.sidebar_visible = true,
+            Msg::HideSidebar => self.sidebar_visible = false,
             Msg::ChangeRadix(radix) => {
                 self.simple_view.emit(CPUViewMessage::ChangeRadix(radix));
                 self.component_view.emit(CPUViewMessage::ChangeRadix(radix));
@@ -243,8 +245,15 @@ impl Component for App {
                     },
                     #[name = "toggle_sidebar"]
                     pack_start = &gtk::ToggleButton {
+                        #[watch]
+                        set_active: model.sidebar_visible,
                         set_icon_name: "sidebar-show-symbolic",
-                        connect_clicked => Msg::ToggleSidebar,
+                        connect_clicked[sender] => move |val| {
+                            match val.is_active() {
+                                true => sender.input(Msg::ShowSidebar),
+                                false => sender.input(Msg::HideSidebar),
+                            }
+                        },
                     },
                     pack_end = &gtk::DropDown::from_strings(&["Hex", "Binary", "Decimal"]) {
                         connect_selected_item_notify[sender] => move |val| {
@@ -263,6 +272,13 @@ impl Component for App {
                     set_vexpand: true,
                     #[name = "flap"]
                     adw::Flap {
+                        connect_reveal_flap_notify[sender] => move |val| {
+                            match (val.reveals_flap(), val.is_folded()) {
+                                (true, true) => sender.input(Msg::ShowSidebar),
+                                (false, true) => sender.input(Msg::HideSidebar),
+                                _ => {},
+                            }
+                        },
                         #[watch]
                         set_locked: model.sidebar_visible,
                         #[watch]
