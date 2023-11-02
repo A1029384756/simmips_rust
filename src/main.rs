@@ -30,6 +30,7 @@ struct App {
     app_to_thread: Option<Sender<()>>,
     cpu_running: bool,
     sidebar_visible: bool,
+    sidebar_button_visible: bool,
 }
 
 #[derive(Debug)]
@@ -47,6 +48,8 @@ pub enum Msg {
     ChangeRadix(Radices),
     ShowSidebar,
     HideSidebar,
+    ShowButton,
+    HideButton,
 }
 
 #[derive(Debug)]
@@ -107,6 +110,7 @@ impl Component for App {
             app_to_thread: None,
             cpu_running: false,
             sidebar_visible: false,
+            sidebar_button_visible: true,
         };
 
         let widgets = view_output!();
@@ -202,6 +206,8 @@ impl Component for App {
             }
             Msg::ShowSidebar => self.sidebar_visible = true,
             Msg::HideSidebar => self.sidebar_visible = false,
+            Msg::ShowButton => self.sidebar_button_visible = true,
+            Msg::HideButton => self.sidebar_button_visible = false,
             Msg::ChangeRadix(radix) => {
                 self.simple_view.emit(CPUViewMessage::ChangeRadix(radix));
                 self.component_view.emit(CPUViewMessage::ChangeRadix(radix));
@@ -246,6 +252,8 @@ impl Component for App {
                     #[name = "toggle_sidebar"]
                     pack_start = &gtk::ToggleButton {
                         #[watch]
+                        set_visible: model.sidebar_button_visible,
+                        #[watch]
                         set_active: model.sidebar_visible,
                         set_icon_name: icon_name::DOCK_LEFT,
                         connect_clicked[sender] => move |val| {
@@ -277,6 +285,12 @@ impl Component for App {
                                 (true, true) => sender.input(Msg::ShowSidebar),
                                 (false, true) => sender.input(Msg::HideSidebar),
                                 _ => {},
+                            }
+                        },
+                        connect_folded_notify[sender] => move |val| {
+                            match val.is_folded() {
+                                true => sender.input(Msg::ShowButton),
+                                false => sender.input(Msg::HideButton),
                             }
                         },
                         #[watch]
