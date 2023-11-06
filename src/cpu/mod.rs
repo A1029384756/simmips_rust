@@ -5,8 +5,10 @@ pub mod control_unit;
 pub mod cpu_interface;
 pub mod data_memory;
 pub mod instruction_memory;
+pub mod piplined_cpu;
 pub mod registers;
 pub mod single_cycle_cpu;
+pub mod utils;
 
 const INST_MEM_START: u32 = 0x00400000;
 const DATA_MEM_START: u32 = 0x10010000;

@@ -1,5 +1,5 @@
-use std::mem::size_of_val;
-
+use super::alu::AluOperation;
+use super::control_unit::ControlUnitOutput;
 use super::{BEQ_OPCODE, BNE_OPCODE, INST_MEM_START};
 
 use super::{
@@ -9,6 +9,7 @@ use super::{
     data_memory::{DataMem, DataMemory},
     instruction_memory::{InstructionMem, InstructionMemory},
     registers::{Register, Registers},
+    utils::*,
 };
 
 #[derive(Debug, Clone)]
@@ -45,11 +46,11 @@ impl CPUInterface for SingleCycleCPU {
         self.error_message.clone()
     }
 
-    fn get_control_signals(&self) -> super::control_unit::ControlUnitOutput {
+    fn get_control_signals(&self) -> ControlUnitOutput {
         todo!()
     }
 
-    fn get_alu_signals(&self) -> super::alu::AluOperation {
+    fn get_alu_signals(&self) -> AluOperation {
         todo!()
     }
 
@@ -132,8 +133,8 @@ impl CPUInterface for SingleCycleCPU {
 }
 
 impl SingleCycleCPU {
-    pub fn new() -> SingleCycleCPU {
-        SingleCycleCPU {
+    pub fn new() -> Self {
+        Self {
             error_message: None,
             registers: [0; 32],
             pc: INST_MEM_START,
@@ -151,9 +152,4 @@ impl SingleCycleCPU {
             data_memory,
         }
     }
-}
-
-fn sign_extend(v: i32, n_bits: u32) -> i32 {
-    let other_bits = size_of_val(&v) as u32 * 8 - n_bits;
-    v.wrapping_shl(other_bits).wrapping_shr(other_bits)
 }
