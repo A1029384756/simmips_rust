@@ -124,14 +124,14 @@ impl Component for App {
 
         let update_radix: RelmAction<ChangeRadix> =
             RelmAction::new_stateful_with_target_value(&16, move |_, state, value| {
-            *state = value;
-            sender.input(Msg::ChangeRadix(match value {
-                16 => Radices::Hex,
-                10 => Radices::Decimal,
-                2 => Radices::Binary,
-                _ => panic!("Invalid radix"),
-            }))
-        });
+                *state = value;
+                sender.input(Msg::ChangeRadix(match value {
+                    16 => Radices::Hex,
+                    10 => Radices::Decimal,
+                    2 => Radices::Binary,
+                    _ => panic!("Invalid radix"),
+                }))
+            });
         let mut group = RelmActionGroup::<WindowActionGroup>::new();
         group.add_action(update_radix);
         group.register_for_widget(&widgets.main_window);
@@ -288,36 +288,42 @@ impl Component for App {
                                 false => sender.input(Msg::HideSidebar),
                             }
                         },
+                        set_tooltip_text: Some("Show Text"),
                     },
                     pack_start = &gtk::Button {
                         #[watch]
                         set_sensitive: !model.cpu_running,
                         set_icon_name: icon_name::TEXT,
                         connect_clicked[sender] => move |_| { sender.input(Msg::OpenRequest) },
+                        set_tooltip_text: Some("Load File"),
                     },
                     pack_start = &gtk::Button {
                         #[watch]
                         set_sensitive: !model.cpu_running,
                         set_icon_name: icon_name::REFRESH,
                         connect_clicked[sender] => move |_| { sender.input(Msg::ResetSimulation) },
+                        set_tooltip_text: Some("Reset Simulation"),
                     },
 
                     pack_end = &gtk::MenuButton {
                         #[wrap(Some)]
                         set_popover = &gtk::PopoverMenu::from_model(Some(&options)),
                         set_icon_name: icon_name::MENU,
+                        set_tooltip_text: Some("Options"),
                     },
                     pack_end = &gtk::Button {
                         #[watch]
-                        set_sensitive: model.history.can_redo(),
+                        set_sensitive: model.history.can_redo() && !model.cpu_running,
                         set_icon_name: icon_name::ARROW_REDO_FILLED,
                         connect_clicked[sender] => move |_| { sender.input(Msg::Redo) },
+                        set_tooltip_text: Some("Redo"),
                     },
                     pack_end = &gtk::Button {
                         #[watch]
                         set_sensitive: !model.cpu_running,
                         set_icon_name: icon_name::ARROW_STEP_IN_RIGHT_FILLED,
                         connect_clicked[sender] => move |_| { sender.input(Msg::Step) },
+                        set_tooltip_text: Some("Step Forward"),
                     },
                     pack_end = &gtk::ToggleButton {
                        #[watch]
@@ -329,13 +335,16 @@ impl Component for App {
                                 true => sender.input(Msg::Run),
                                 false => sender.input(Msg::Break),
                             }
-                       }
+                       },
+                       #[watch]
+                       set_tooltip_text: if model.cpu_running { Some("Stop Simulation") } else { Some("Run Simulation") }
                     },
                     pack_end = &gtk::Button {
                         #[watch]
-                        set_sensitive: model.history.can_undo(),
+                        set_sensitive: model.history.can_undo() && !model.cpu_running,
                         set_icon_name: icon_name::ARROW_UNDO_FILLED,
                         connect_clicked[sender] => move |_| { sender.input(Msg::Undo) },
+                        set_tooltip_text: Some("Undo"),
                     },
                 },
 
@@ -397,7 +406,9 @@ impl Component for App {
                 "Hex" => ChangeRadix(16),
                 "Decimal" => ChangeRadix(10),
                 "Binary" => ChangeRadix(2),
-            }
+            },
+            section! {
+            },
         }
     }
 }
