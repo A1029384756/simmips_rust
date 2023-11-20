@@ -325,7 +325,6 @@ impl Component for App {
                     },
                 },
 
-                #[name = "split_view"]
                 gtk::Box {
                     set_vexpand: true,
                     #[name = "flap"]
