@@ -1,6 +1,6 @@
 [package]
 name = "simmips_rust"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 [dependencies]
@@ -16,7 +16,7 @@ features = ["libadwaita", "gnome_44"]
 
 [dependencies.relm4-icons]
 version = "0.7.0-alpha.2"
-features = ["table", "object-packing", "dock-left"]
+features = ["table", "object-packing", "dock-left", "step-back", "step-over", "execute-from", "pause"]
 
 [dependencies.mips_assembler]
 git = "https://github.com/A1029384756/mips_assembler"

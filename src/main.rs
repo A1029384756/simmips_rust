@@ -2,8 +2,8 @@ mod cpu;
 mod ui_components;
 
 use std::path::PathBuf;
+use std::sync::mpsc;
 use std::sync::mpsc::Sender;
-use std::sync::{mpsc, Arc, Mutex};
 
 use adw::prelude::*;
 use gtk::glib;
@@ -17,6 +17,7 @@ use mips_assembler::parse;
 
 use ui_components::column_views::Radices;
 use ui_components::component_view::ComponentView;
+use ui_components::history::History;
 use ui_components::simple_view::SimpleView;
 use ui_components::CPUViewMessage;
 
@@ -25,7 +26,7 @@ struct App {
     simple_view: Controller<SimpleView>,
     component_view: Controller<ComponentView>,
     mode: AppMode,
-    cpu: Arc<Mutex<dyn CPUInterface>>,
+    history: History<SingleCycleCPU>,
     asm_view_buffer: gtk::TextBuffer,
     app_to_thread: Option<Sender<()>>,
     cpu_running: bool,
@@ -41,6 +42,8 @@ pub enum Msg {
     Step,
     Run,
     Break,
+    Undo,
+    Redo,
     ResetSimulation,
     UpdateViews,
     ShowMessage(String),
@@ -60,7 +63,7 @@ pub enum AppMode {
 
 #[derive(Debug)]
 enum CommandMsg {
-    ThreadFinished,
+    ThreadFinished(SingleCycleCPU),
 }
 
 #[relm4::component]
@@ -105,7 +108,7 @@ impl Component for App {
             simple_view,
             component_view,
             mode: AppMode::SimpleView,
-            cpu: Arc::new(Mutex::new(SingleCycleCPU::new())),
+            history: History::new(),
             asm_view_buffer: gtk::TextBuffer::new(Some(&tag_table)),
             app_to_thread: None,
             cpu_running: false,
@@ -125,9 +128,8 @@ impl Component for App {
                 Ok(contents) => {
                     match parse(&contents) {
                         Ok((inst_mem, data_mem)) => {
-                            self.cpu = Arc::new(Mutex::new(SingleCycleCPU::new_from_memory(
-                                inst_mem, data_mem,
-                            )));
+                            self.history
+                                .reset(SingleCycleCPU::new_from_memory(inst_mem, data_mem));
                             sender.input(Msg::UpdateViews);
                         }
                         Err(err) => sender.input(Msg::ShowMessage(err)),
@@ -137,11 +139,11 @@ impl Component for App {
                 Err(e) => sender.input(Msg::ShowMessage(e.to_string())),
             },
             Msg::Step => {
-                if let Ok(mut cpu) = self.cpu.lock() {
-                    cpu.step();
-                    if let Some(error) = cpu.get_error() {
-                        sender.input(Msg::ShowMessage(error));
-                    }
+                let curr = self.history.get_curr().clone();
+                self.history.append(curr);
+                self.history.get_curr().step();
+                if let Some(error) = self.history.get_curr().get_error() {
+                    sender.input(Msg::ShowMessage(error));
                 }
                 sender.input(Msg::UpdateViews);
             }
@@ -150,17 +152,16 @@ impl Component for App {
                 self.cpu_running = true;
 
                 self.app_to_thread = Some(app_tx);
-                let cpu_copy = self.cpu.clone();
+
+                let mut cpu_copy = self.history.get_curr().clone();
                 sender.oneshot_command(async move {
-                    if let Ok(mut cpu) = cpu_copy.lock() {
-                        while cpu.get_error().is_none() {
-                            cpu.step();
-                            if thread_rx.try_recv().is_ok() {
-                                break;
-                            }
+                    while cpu_copy.get_error().is_none() {
+                        cpu_copy.step();
+                        if thread_rx.try_recv().is_ok() {
+                            break;
                         }
                     }
-                    CommandMsg::ThreadFinished
+                    CommandMsg::ThreadFinished(cpu_copy)
                 });
             }
             Msg::Break => match &self.app_to_thread {
@@ -190,9 +191,8 @@ impl Component for App {
                     true,
                 )) {
                     Ok((inst_mem, data_mem)) => {
-                        self.cpu = Arc::new(Mutex::new(SingleCycleCPU::new_from_memory(
-                            inst_mem, data_mem,
-                        )));
+                        self.history
+                            .reset(SingleCycleCPU::new_from_memory(inst_mem, data_mem));
                         sender.input(Msg::UpdateViews);
                     }
                     Err(err) => sender.input(Msg::ShowMessage(err)),
@@ -200,9 +200,9 @@ impl Component for App {
             }
             Msg::UpdateViews => {
                 self.simple_view
-                    .emit(CPUViewMessage::Update(self.cpu.clone()));
+                    .emit(CPUViewMessage::Update(self.history.get_curr().clone()));
                 self.component_view
-                    .emit(CPUViewMessage::Update(self.cpu.clone()));
+                    .emit(CPUViewMessage::Update(self.history.get_curr().clone()));
             }
             Msg::ShowSidebar => self.sidebar_visible = true,
             Msg::HideSidebar => self.sidebar_visible = false,
@@ -211,6 +211,14 @@ impl Component for App {
             Msg::ChangeRadix(radix) => {
                 self.simple_view.emit(CPUViewMessage::ChangeRadix(radix));
                 self.component_view.emit(CPUViewMessage::ChangeRadix(radix));
+            }
+            Msg::Undo => {
+                self.history.undo();
+                sender.input(Msg::UpdateViews);
+            }
+            Msg::Redo => {
+                self.history.redo();
+                sender.input(Msg::UpdateViews);
             }
             Msg::Ignore => {}
         }
@@ -223,13 +231,12 @@ impl Component for App {
         _: &Self::Root,
     ) {
         match message {
-            CommandMsg::ThreadFinished => {
+            CommandMsg::ThreadFinished(cpu) => {
                 self.cpu_running = false;
+                self.history.append(cpu.clone());
                 sender.input(Msg::UpdateViews);
-                if let Ok(cpu) = self.cpu.lock() {
-                    if let Some(error) = cpu.get_error() {
-                        sender.input(Msg::ShowMessage(error));
-                    }
+                if let Some(error) = self.history.get_curr().get_error() {
+                    sender.input(Msg::ShowMessage(error));
                 }
             }
         }
@@ -272,6 +279,30 @@ impl Component for App {
                                 _ => panic!("Invalid radix"),
                             }
                         },
+                    },
+                    pack_end = &gtk::Button {
+                        #[watch]
+                        set_sensitive: model.history.can_redo(),
+                        set_icon_name: icon_name::STEP_OVER,
+                        connect_clicked[sender] => move |_| { sender.input(Msg::Redo) },
+                    },
+                    pack_end = &gtk::ToggleButton {
+                       #[watch]
+                       set_active: model.cpu_running,
+                       #[watch]
+                       set_icon_name: if model.cpu_running { icon_name::PAUSE } else { icon_name::EXECUTE_FROM },
+                       connect_clicked[sender] => move |val| {
+                            match val.is_active() {
+                                true => sender.input(Msg::Run),
+                                false => sender.input(Msg::Break),
+                            }
+                       }
+                    },
+                    pack_end = &gtk::Button {
+                        #[watch]
+                        set_sensitive: model.history.can_undo(),
+                        set_icon_name: icon_name::STEP_BACK,
+                        connect_clicked[sender] => move |_| { sender.input(Msg::Undo) },
                     },
                 },
 
@@ -343,20 +374,6 @@ impl Component for App {
                         #[watch]
                         set_sensitive: !model.cpu_running,
                         connect_clicked => Msg::Step,
-                    },
-
-                    gtk::Button {
-                        set_label: "Run",
-                        #[watch]
-                        set_sensitive: !model.cpu_running,
-                        connect_clicked => Msg::Run,
-                    },
-
-                    gtk::Button {
-                        set_label: "Break",
-                        #[watch]
-                        set_sensitive: model.cpu_running,
-                        connect_clicked => Msg::Break,
                     },
 
                     gtk::Button {

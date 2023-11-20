@@ -132,6 +132,12 @@ impl CPUInterface for SingleCycleCPU {
     }
 }
 
+impl Default for SingleCycleCPU {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SingleCycleCPU {
     pub fn new() -> Self {
         Self {

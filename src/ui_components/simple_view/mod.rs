@@ -1,3 +1,5 @@
+use crate::cpu::cpu_interface::CPUInterface;
+
 use super::column_views::{memory_view::*, register_view::*};
 use super::CPUViewMessage;
 use gtk::prelude::*;
@@ -40,18 +42,16 @@ impl SimpleComponent for SimpleView {
     fn update(&mut self, msg: Self::Input, _sender: ComponentSender<Self>) {
         match msg {
             CPUViewMessage::Update(cpu) => {
-                if let Ok(cpu) = cpu.lock() {
-                    self.register_view.emit(RegMsg::UpdateRegisters(
-                        (0..33)
-                            .map(|idx| cpu.get_register(FromPrimitive::from_i32(idx).unwrap()))
-                            .collect(),
-                    ));
-                    self.memory_view.emit(MemoryMsg::UpdateMemory(
-                        (0..cpu.get_memory_size())
-                            .map(|idx| cpu.get_memory_byte(idx).unwrap())
-                            .collect(),
-                    ));
-                }
+                self.register_view.emit(RegMsg::UpdateRegisters(
+                    (0..33)
+                        .map(|idx| cpu.get_register(FromPrimitive::from_i32(idx).unwrap()))
+                        .collect(),
+                ));
+                self.memory_view.emit(MemoryMsg::UpdateMemory(
+                    (0..cpu.get_memory_size())
+                        .map(|idx| cpu.get_memory_byte(idx).unwrap())
+                        .collect(),
+                ));
             }
             CPUViewMessage::ChangeRadix(radix) => {
                 self.register_view.emit(RegMsg::UpdateRadix(radix));
