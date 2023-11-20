@@ -4,8 +4,8 @@ use self::column_views::Radices;
 
 pub mod column_views;
 pub mod component_view;
-pub mod simple_view;
 pub mod history;
+pub mod simple_view;
 
 #[derive(Debug)]
 pub enum CPUViewMessage {

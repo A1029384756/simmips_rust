@@ -24,6 +24,7 @@ features = [
   "pause",
   "refresh",
   "text",
+  "menu",
   "arrow-redo-filled",
   "arrow-undo-filled",
   "arrow-step-in-right-filled",

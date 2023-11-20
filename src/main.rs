@@ -7,6 +7,7 @@ use std::sync::mpsc::Sender;
 
 use adw::prelude::*;
 use gtk::glib;
+use relm4::actions::{RelmAction, RelmActionGroup};
 use relm4::prelude::*;
 use relm4_components::open_dialog::*;
 use relm4_icons::icon_name;
@@ -66,6 +67,9 @@ enum CommandMsg {
     ThreadFinished(SingleCycleCPU),
 }
 
+relm4::new_action_group!(WindowActionGroup, "win");
+relm4::new_stateful_action!(ChangeRadix, WindowActionGroup, "change_radix", u8, u8);
+
 #[relm4::component]
 impl Component for App {
     type CommandOutput = CommandMsg;
@@ -117,6 +121,20 @@ impl Component for App {
         };
 
         let widgets = view_output!();
+
+        let update_radix: RelmAction<ChangeRadix> =
+            RelmAction::new_stateful_with_target_value(&16, move |_, state, value| {
+            *state = value;
+            sender.input(Msg::ChangeRadix(match value {
+                16 => Radices::Hex,
+                10 => Radices::Decimal,
+                2 => Radices::Binary,
+                _ => panic!("Invalid radix"),
+            }))
+        });
+        let mut group = RelmActionGroup::<WindowActionGroup>::new();
+        group.add_action(update_radix);
+        group.register_for_widget(&widgets.main_window);
 
         ComponentParts { model, widgets }
     }
@@ -243,7 +261,8 @@ impl Component for App {
     }
 
     view! {
-        adw::ApplicationWindow {
+        #[root]
+        main_window = adw::ApplicationWindow {
             set_size_request: (500, 500),
             set_default_size: (1000, 650),
 
@@ -283,15 +302,10 @@ impl Component for App {
                         connect_clicked[sender] => move |_| { sender.input(Msg::ResetSimulation) },
                     },
 
-                    pack_end = &gtk::DropDown::from_strings(&["Hex", "Binary", "Decimal"]) {
-                        connect_selected_item_notify[sender] => move |val| {
-                            match val.selected() {
-                                0 => sender.input(Msg::ChangeRadix(Radices::Hex)),
-                                1 => sender.input(Msg::ChangeRadix(Radices::Binary)),
-                                2 => sender.input(Msg::ChangeRadix(Radices::Decimal)),
-                                _ => panic!("Invalid radix"),
-                            }
-                        },
+                    pack_end = &gtk::MenuButton {
+                        #[wrap(Some)]
+                        set_popover = &gtk::PopoverMenu::from_model(Some(&options)),
+                        set_icon_name: icon_name::MENU,
                     },
                     pack_end = &gtk::Button {
                         #[watch]
@@ -373,6 +387,16 @@ impl Component for App {
                         },
                     },
                 },
+            }
+        },
+    }
+
+    menu! {
+        options: {
+            "Radix" {
+                "Hex" => ChangeRadix(16),
+                "Decimal" => ChangeRadix(10),
+                "Binary" => ChangeRadix(2),
             }
         }
     }
