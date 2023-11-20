@@ -256,7 +256,7 @@ impl Component for App {
                     set_title_widget = &adw::ViewSwitcher {
                             set_stack: Some(&stack),
                     },
-                    #[name = "toggle_sidebar"]
+
                     pack_start = &gtk::ToggleButton {
                         #[watch]
                         set_visible: model.sidebar_button_visible,
@@ -270,6 +270,19 @@ impl Component for App {
                             }
                         },
                     },
+                    pack_start = &gtk::Button {
+                        #[watch]
+                        set_sensitive: !model.cpu_running,
+                        set_icon_name: icon_name::TEXT,
+                        connect_clicked[sender] => move |_| { sender.input(Msg::OpenRequest) },
+                    },
+                    pack_start = &gtk::Button {
+                        #[watch]
+                        set_sensitive: !model.cpu_running,
+                        set_icon_name: icon_name::REFRESH,
+                        connect_clicked[sender] => move |_| { sender.input(Msg::ResetSimulation) },
+                    },
+
                     pack_end = &gtk::DropDown::from_strings(&["Hex", "Binary", "Decimal"]) {
                         connect_selected_item_notify[sender] => move |val| {
                             match val.selected() {
@@ -283,8 +296,14 @@ impl Component for App {
                     pack_end = &gtk::Button {
                         #[watch]
                         set_sensitive: model.history.can_redo(),
-                        set_icon_name: icon_name::STEP_OVER,
+                        set_icon_name: icon_name::ARROW_REDO_FILLED,
                         connect_clicked[sender] => move |_| { sender.input(Msg::Redo) },
+                    },
+                    pack_end = &gtk::Button {
+                        #[watch]
+                        set_sensitive: !model.cpu_running,
+                        set_icon_name: icon_name::ARROW_STEP_IN_RIGHT_FILLED,
+                        connect_clicked[sender] => move |_| { sender.input(Msg::Step) },
                     },
                     pack_end = &gtk::ToggleButton {
                        #[watch]
@@ -301,7 +320,7 @@ impl Component for App {
                     pack_end = &gtk::Button {
                         #[watch]
                         set_sensitive: model.history.can_undo(),
-                        set_icon_name: icon_name::STEP_BACK,
+                        set_icon_name: icon_name::ARROW_UNDO_FILLED,
                         connect_clicked[sender] => move |_| { sender.input(Msg::Undo) },
                     },
                 },
@@ -351,38 +370,10 @@ impl Component for App {
                                 add_titled[Some("Component"), "Component"] = model.component_view.widget() {} -> {
                                     set_icon_name: Some(icon_name::OBJECT_PACKING),
                                 },
-                            },
+                           },
                         },
                     },
                 },
-
-                gtk::Box {
-                    set_orientation: gtk::Orientation::Horizontal,
-                    set_spacing: 5,
-                    set_margin_all: 5,
-                    set_hexpand: true,
-
-                    gtk::Button {
-                        set_label: "Load File",
-                        #[watch]
-                        set_sensitive: !model.cpu_running,
-                        connect_clicked => Msg::OpenRequest,
-                    },
-
-                    gtk::Button {
-                        set_label: "Step",
-                        #[watch]
-                        set_sensitive: !model.cpu_running,
-                        connect_clicked => Msg::Step,
-                    },
-
-                    gtk::Button {
-                        set_label: "Reset",
-                        #[watch]
-                        set_sensitive: !model.cpu_running,
-                        connect_clicked => Msg::ResetSimulation,
-                    },
-                }
             }
         }
     }
