@@ -108,7 +108,7 @@ impl Component for App {
             simple_view,
             component_view,
             mode: AppMode::SimpleView,
-            history: History::new(),
+            history: History::new(10),
             asm_view_buffer: gtk::TextBuffer::new(Some(&tag_table)),
             app_to_thread: None,
             cpu_running: false,

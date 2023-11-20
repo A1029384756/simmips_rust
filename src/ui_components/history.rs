@@ -2,14 +2,16 @@ pub struct History<T> {
     curr: T,
     undo: Vec<T>,
     redo: Vec<T>,
+    size: usize,
 }
 
 impl<T: Clone + Default> History<T> {
-    pub fn new() -> Self {
+    pub fn new(size: usize) -> Self {
         Self {
             curr: T::default(),
             undo: vec![],
             redo: vec![],
+            size,
         }
     }
 
@@ -22,10 +24,15 @@ impl<T: Clone + Default> History<T> {
             self.redo.clear();
         }
 
-        self.undo.push(self.curr.clone());
+        if self.undo.len() >= self.size {
+            self.undo.rotate_left(1);
+            self.undo[self.size - 1] = self.curr.clone();
+        } else {
+            self.undo.push(self.curr.clone());
+        }
         self.curr = elem;
     }
-    
+
     pub fn reset(&mut self, elem: T) {
         self.curr = elem;
         self.undo.clear();
