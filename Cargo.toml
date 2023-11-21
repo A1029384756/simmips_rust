@@ -9,6 +9,7 @@ num-derive = "0.4.0"
 num-traits = "0.2.15"
 relm4-components = "0.7.0-beta.2"
 libadwaita = { version = "0.5.3", features = ["v1_3"] }
+anyhow = "1.0.75"
 
 [dependencies.relm4]
 version = "0.7.0-beta.1"
@@ -18,13 +19,16 @@ features = ["libadwaita", "gnome_44"]
 version = "0.7.0-alpha.2"
 features = [
   "table",
-  "object-packing",
+  "processor",
   "dock-left",
   "execute-from",
   "pause",
   "refresh",
   "text",
   "menu",
+  "dark-mode",
+  "settings",
+  "emergency-number",
   "arrow-redo-filled",
   "arrow-undo-filled",
   "arrow-step-in-right-filled",

@@ -95,9 +95,7 @@ impl SimpleComponent for MemoryView {
             });
         });
 
-        let model = MemoryView {
-            view_wrapper,
-        };
+        let model = MemoryView { view_wrapper };
 
         let my_view = &model.view_wrapper.view;
         my_view.set_show_row_separators(true);
@@ -116,7 +114,7 @@ impl SimpleComponent for MemoryView {
                 new_mem.into_iter().enumerate().for_each(|(idx, val)| {
                     self.view_wrapper.append(MemoryRow {
                         addr: idx as u32,
-                        value: RadixedValue { radix, value: val }
+                        value: RadixedValue { radix, value: val },
                     });
                 })
             }
@@ -136,7 +134,7 @@ impl SimpleComponent for MemoryView {
                         value: RadixedValue { radix, value: *val },
                     });
                 });
-            },
+            }
         }
     }
 

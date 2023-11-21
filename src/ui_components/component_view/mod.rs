@@ -1,9 +1,7 @@
-use std::sync::MutexGuard;
-
 use crate::cpu::single_cycle_cpu::SingleCycleCPU;
 
-use super::CPUViewMessage;
 use super::CPUInterface;
+use super::CPUViewMessage;
 use gtk::prelude::*;
 use relm4::drawing::DrawHandler;
 use relm4::gtk::cairo::{Context, Operator};
@@ -40,7 +38,7 @@ impl SimpleComponent for ComponentView {
             CPUViewMessage::Update(cpu) => {
                 cx.set_source_rgba(255.0, 255.0, 255.0, 255.0);
                 cx.paint().expect("Could not fill context");
-            },
+            }
             CPUViewMessage::Resize((x, y)) => {
                 cx.set_source_rgba(255.0, 255.0, 255.0, 255.0);
                 cx.paint().expect("Could not fill context");
@@ -68,6 +66,5 @@ impl SimpleComponent for ComponentView {
 }
 
 impl ComponentView {
-    fn draw_view(&mut self, cpu: SingleCycleCPU) {
-    }
+    fn draw_view(&mut self, cpu: SingleCycleCPU) {}
 }

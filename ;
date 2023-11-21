@@ -7,6 +7,7 @@ use std::sync::mpsc::Sender;
 
 use adw::prelude::*;
 use gtk::glib;
+use relm4::actions::{RelmAction, RelmActionGroup};
 use relm4::prelude::*;
 use relm4_components::open_dialog::*;
 use relm4_icons::icon_name;
@@ -306,6 +307,12 @@ impl Component for App {
                         connect_clicked => Msg::ShowPreferences,
                         set_tooltip_text: Some("Preferences"),
                     },
+                    pack_end = &gtk::MenuButton {
+                        #[wrap(Some)]
+                        set_popover = &gtk::PopoverMenu::from_model(Some(&options)),
+                        set_icon_name: icon_name::MENU,
+                        set_tooltip_text: Some("Options"),
+                    },
                     pack_end = &gtk::Button {
                         #[watch]
                         set_sensitive: model.history.can_redo() && !model.cpu_running,
@@ -393,6 +400,18 @@ impl Component for App {
                 },
             }
         },
+    }
+
+    menu! {
+        options: {
+            "Radix" {
+                "Hex" => ChangeRadix(16),
+                "Decimal" => ChangeRadix(10),
+                "Binary" => ChangeRadix(2),
+            },
+            section! {
+            },
+        }
     }
 }
 

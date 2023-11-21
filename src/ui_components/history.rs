@@ -20,9 +20,7 @@ impl<T: Clone + Default> History<T> {
     }
 
     pub fn append(&mut self, elem: T) {
-        if !self.redo.is_empty() {
-            self.redo.clear();
-        }
+        self.redo.clear();
 
         if self.undo.len() >= self.size {
             self.undo.rotate_left(1);
@@ -39,23 +37,27 @@ impl<T: Clone + Default> History<T> {
         self.redo.clear();
     }
 
+    pub fn resize(&mut self, size: usize) {
+        self.redo.clear();
+
+        if size < self.size {
+            self.undo = self.undo[self.size - size..self.size - 1].to_vec();
+        }
+
+        self.size = size;
+    }
+
     pub fn undo(&mut self) {
-        match self.undo.pop() {
-            Some(elem) => {
-                self.redo.push(self.curr.clone());
-                self.curr = elem;
-            }
-            None => {}
+        if let Some(elem) = self.undo.pop() {
+            self.redo.push(self.curr.clone());
+            self.curr = elem;
         }
     }
 
     pub fn redo(&mut self) {
-        match self.redo.pop() {
-            Some(elem) => {
-                self.undo.push(self.curr.clone());
-                self.curr = elem;
-            }
-            None => {}
+        if let Some(elem) = self.redo.pop() {
+            self.undo.push(self.curr.clone());
+            self.curr = elem;
         }
     }
 

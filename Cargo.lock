@@ -1129,6 +1129,7 @@ dependencies = [
 name = "simmips_rust"
 version = "0.2.0"
 dependencies = [
+ "anyhow",
  "libadwaita",
  "mips_assembler",
  "num",

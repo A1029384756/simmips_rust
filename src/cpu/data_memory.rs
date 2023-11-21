@@ -39,24 +39,22 @@ impl DataMem for DataMemory {
                     Err(())
                 }
             }
-            Mem::Half => (0..2)
-                .try_for_each(|v| {
-                    if let Some(elem) = self.get_mut(offset_addr as usize + v) {
-                        *elem = data[v];
-                        Ok(())
-                    } else {
-                        Err(())
-                    }
-                }),
-            Mem::Word => (0..4)
-                .try_for_each(|v| {
-                    if let Some(elem) = self.get_mut(offset_addr as usize + v) {
-                        *elem = data[v];
-                        Ok(())
-                    } else {
-                        Err(())
-                    }
-                }),
+            Mem::Half => (0..2).try_for_each(|v| {
+                if let Some(elem) = self.get_mut(offset_addr as usize + v) {
+                    *elem = data[v];
+                    Ok(())
+                } else {
+                    Err(())
+                }
+            }),
+            Mem::Word => (0..4).try_for_each(|v| {
+                if let Some(elem) = self.get_mut(offset_addr as usize + v) {
+                    *elem = data[v];
+                    Ok(())
+                } else {
+                    Err(())
+                }
+            }),
         }
     }
 }
