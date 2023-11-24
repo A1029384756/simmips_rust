@@ -5,7 +5,6 @@ use std::sync::mpsc::Sender;
 use adw::prelude::*;
 use mips_assembler::parse;
 use relm4::prelude::*;
-use relm4_components::open_dialog::{OpenDialog, OpenDialogMsg, OpenDialogResponse};
 use relm4_icons::icon_name;
 
 use super::{
@@ -16,7 +15,6 @@ use crate::cpu::{cpu_interface::CPUInterface, single_cycle_cpu::SingleCycleCPU};
 
 #[derive(Debug, Clone)]
 pub enum SimulationMsg {
-    OpenRequest,
     OpenResponse(PathBuf),
     Ignore,
     Step,
@@ -42,10 +40,10 @@ pub enum SimulationOutput {
     ShowMessage(String),
     ShowSidebarButton(bool),
     ShowSidebar(bool),
+    OpenFile(DynamicIndex),
 }
 
 pub struct CPUSimulation {
-    file_chooser: Controller<OpenDialog>,
     simple_view: Controller<SimpleView>,
     component_view: Controller<ComponentView>,
     history: History<SingleCycleCPU>,
@@ -123,7 +121,7 @@ impl FactoryComponent for CPUSimulation {
                     #[watch]
                     set_sensitive: !self.cpu_running,
                     set_icon_name: icon_name::TEXT,
-                    connect_clicked[sender] => move |_| { sender.input(SimulationMsg::OpenRequest) },
+                    connect_clicked[sender, index] => move |_| { sender.output(SimulationOutput::OpenFile(index.clone())).unwrap() },
                     set_tooltip_text: Some("Load File"),
                 },
                 pack_start = &gtk::Button {
@@ -178,13 +176,6 @@ impl FactoryComponent for CPUSimulation {
     }
 
     fn init_model(count: Self::Init, _idx: &DynamicIndex, sender: FactorySender<Self>) -> Self {
-        let file_chooser = OpenDialog::builder()
-            .launch(relm4_components::open_dialog::OpenDialogSettings::default())
-            .forward(sender.input_sender(), |response| match response {
-                OpenDialogResponse::Accept(path) => SimulationMsg::OpenResponse(path),
-                OpenDialogResponse::Cancel => SimulationMsg::Ignore,
-            });
-
         let simple_view = SimpleView::builder()
             .launch(())
             .forward(sender.input_sender(), |_| SimulationMsg::Ignore);
@@ -203,7 +194,6 @@ impl FactoryComponent for CPUSimulation {
         );
 
         Self {
-            file_chooser,
             simple_view,
             component_view,
             history: History::new(10),
@@ -217,7 +207,6 @@ impl FactoryComponent for CPUSimulation {
 
     fn update(&mut self, msg: SimulationMsg, sender: FactorySender<Self>) {
         match msg {
-            SimulationMsg::OpenRequest => self.file_chooser.emit(OpenDialogMsg::Open),
             SimulationMsg::OpenResponse(path) => match std::fs::read_to_string(path) {
                 Ok(contents) => {
                     match parse(&contents) {

@@ -1,10 +1,13 @@
 mod cpu;
 mod ui_components;
 
+use std::path::PathBuf;
+
 use adw::prelude::*;
 use gtk::glib;
 use relm4::{factory::FactoryVecDeque, prelude::*};
 
+use relm4_components::open_dialog::{OpenDialog, OpenDialogMsg, OpenDialogResponse};
 use relm4_icons::icon_name;
 use ui_components::{
     column_views::Radices,
@@ -16,6 +19,8 @@ use crate::ui_components::preferences::{Preferences, UpdatePreferencesOutput};
 struct App {
     simulations: FactoryVecDeque<CPUSimulation>,
     preferences_menu: Controller<Preferences>,
+    file_chooser: Controller<OpenDialog>,
+    file_tab: Option<DynamicIndex>,
     sidebar_button_visible: bool,
     sidebar_visible: bool,
     tab_count: usize,
@@ -32,6 +37,8 @@ pub enum Msg {
     ChangeRadix(Radices),
 
     NewTab,
+    OpenRequest(DynamicIndex),
+    OpenResponse(PathBuf),
 
     Ignore,
 }
@@ -101,6 +108,7 @@ impl Component for App {
                 SimulationOutput::ShowMessage(message) => Msg::ShowMessage(message),
                 SimulationOutput::ShowSidebarButton(visible) => Msg::ShowSidebarButton(visible),
                 SimulationOutput::ShowSidebar(visible) => Msg::ShowSidebar(visible),
+                SimulationOutput::OpenFile(index) => Msg::OpenRequest(index),
             });
 
         let preferences_menu =
@@ -111,10 +119,20 @@ impl Component for App {
                     UpdatePreferencesOutput::RadixChanged(radix) => Msg::ChangeRadix(radix),
                 });
 
+        let file_chooser = OpenDialog::builder()
+            .transient_for_native(root)
+            .launch(relm4_components::open_dialog::OpenDialogSettings::default())
+            .forward(sender.input_sender(), |response| match response {
+                OpenDialogResponse::Accept(path) => Msg::OpenResponse(path),
+                OpenDialogResponse::Cancel => Msg::Ignore,
+            });
+
         simulations.guard().push_back(1);
         let model = Self {
             simulations,
             preferences_menu,
+            file_chooser,
+            file_tab: None,
             sidebar_button_visible: true,
             sidebar_visible: false,
             tab_count: 1,
@@ -164,6 +182,17 @@ impl Component for App {
                 sender.input_sender().emit(Msg::ResizeHistory(
                     self.preferences_menu.model().history_size,
                 ));
+            }
+            Msg::OpenRequest(index) => {
+                self.file_tab = Some(index);
+                self.file_chooser.emit(OpenDialogMsg::Open);
+            }
+            Msg::OpenResponse(path) => {
+                let idx = self.file_tab.clone();
+                if let Some(index) = idx {
+                    self.simulations
+                        .send(index.current_index(), SimulationMsg::OpenResponse(path));
+                }
             }
             Msg::Ignore => {}
         }
