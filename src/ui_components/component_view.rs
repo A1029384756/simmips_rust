@@ -18,6 +18,22 @@ impl SimpleComponent for ComponentView {
     type Output = ();
     type Init = ();
 
+    view! {
+        #[root]
+        gtk::Box {
+            set_spacing: 5,
+            set_margin_all: 5,
+            #[local_ref]
+            area -> gtk::DrawingArea {
+                set_vexpand: true,
+                set_hexpand: true,
+                connect_resize[sender] => move |_, x, y| {
+                    sender.input(CPUViewMessage::Resize((x, y)))
+                }
+            },
+        },
+    }
+
     fn init(
         _: Self::Init,
         root: &Self::Root,
@@ -46,22 +62,6 @@ impl SimpleComponent for ComponentView {
             CPUViewMessage::ChangeRadix(_) => {}
             CPUViewMessage::None => {}
         }
-    }
-
-    view! {
-        #[root]
-        gtk::Box {
-            set_spacing: 5,
-            set_margin_all: 5,
-            #[local_ref]
-            area -> gtk::DrawingArea {
-                set_vexpand: true,
-                set_hexpand: true,
-                connect_resize[sender] => move |_, x, y| {
-                    sender.input(CPUViewMessage::Resize((x, y)))
-                }
-            },
-        },
     }
 }
 

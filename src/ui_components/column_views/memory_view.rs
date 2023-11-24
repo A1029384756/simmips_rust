@@ -72,6 +72,16 @@ impl SimpleComponent for MemoryView {
     type Output = crate::Msg;
     type Init = ();
 
+    view! {
+        memory_view = gtk::ScrolledWindow {
+            set_hexpand: true,
+            set_vexpand: true,
+            set_margin_all: 5,
+            #[local_ref]
+            my_view -> gtk::ColumnView {}
+        }
+    }
+
     fn init(
         _: Self::Init,
         root: &Self::Root,
@@ -135,16 +145,6 @@ impl SimpleComponent for MemoryView {
                     });
                 });
             }
-        }
-    }
-
-    view! {
-        memory_view = gtk::ScrolledWindow {
-            set_hexpand: true,
-            set_vexpand: true,
-            set_margin_all: 5,
-            #[local_ref]
-            my_view -> gtk::ColumnView {}
         }
     }
 }

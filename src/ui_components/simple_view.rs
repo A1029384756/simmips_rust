@@ -18,6 +18,17 @@ impl SimpleComponent for SimpleView {
     type Output = ();
     type Init = ();
 
+    view! {
+        #[root]
+        gtk::Box {
+            set_orientation: gtk::Orientation::Horizontal,
+            set_spacing: 5,
+            set_margin_all: 5,
+            append: model.register_view.widget(),
+            append: model.memory_view.widget(),
+        },
+    }
+
     fn init(
         _: Self::Init,
         root: &Self::Root,
@@ -60,16 +71,5 @@ impl SimpleComponent for SimpleView {
             CPUViewMessage::Resize(_) => {}
             CPUViewMessage::None => {}
         }
-    }
-
-    view! {
-        #[root]
-        gtk::Box {
-            set_orientation: gtk::Orientation::Horizontal,
-            set_spacing: 5,
-            set_margin_all: 5,
-            append: model.register_view.widget(),
-            append: model.memory_view.widget(),
-        },
     }
 }
