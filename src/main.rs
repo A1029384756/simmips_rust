@@ -16,12 +16,16 @@ use crate::ui_components::preferences::{Preferences, UpdatePreferencesOutput};
 struct App {
     simulations: FactoryVecDeque<CPUSimulation>,
     preferences_menu: Controller<Preferences>,
+    sidebar_button_visible: bool,
+    sidebar_visible: bool,
     tab_count: usize,
 }
 
 #[derive(Debug)]
 pub enum Msg {
     ShowMessage(String),
+    ShowSidebarButton(bool),
+    ShowSidebar(bool),
 
     ShowPreferences,
     ResizeHistory(usize),
@@ -49,6 +53,18 @@ impl Component for App {
                 adw::HeaderBar {
                     #[wrap(Some)]
                     set_title_widget = &gtk::Label { set_markup: "<b>SIMMIPS</b>" },
+
+                    pack_start = &gtk::ToggleButton {
+                        #[watch]
+                        set_visible: model.sidebar_button_visible,
+                        #[watch]
+                        set_active: model.sidebar_visible,
+                        set_icon_name: icon_name::DOCK_LEFT,
+                        connect_clicked[sender] => move |val| {
+                            sender.input(Msg::ShowSidebar(val.is_active()))
+                        },
+                        set_tooltip_text: Some("Show Text"),
+                    },
 
                     pack_end = &gtk::Button {
                         set_icon_name: icon_name::SETTINGS,
@@ -83,6 +99,8 @@ impl Component for App {
             .launch(adw::TabView::default())
             .forward(sender.input_sender(), |output| match output {
                 SimulationOutput::ShowMessage(message) => Msg::ShowMessage(message),
+                SimulationOutput::ShowSidebarButton(visible) => Msg::ShowSidebarButton(visible),
+                SimulationOutput::ShowSidebar(visible) => Msg::ShowSidebar(visible),
             });
 
         let preferences_menu =
@@ -97,6 +115,8 @@ impl Component for App {
         let model = Self {
             simulations,
             preferences_menu,
+            sidebar_button_visible: true,
+            sidebar_visible: false,
             tab_count: 1,
         };
 
@@ -121,6 +141,12 @@ impl Component for App {
                     glib::clone!(@strong sender=>move|dialog,_|{dialog.close();}),
                 );
                 dialog.present();
+            }
+            Msg::ShowSidebarButton(visible) => self.sidebar_button_visible = visible,
+            Msg::ShowSidebar(visible) => {
+                self.sidebar_visible = visible;
+                self.simulations
+                    .broadcast(SimulationMsg::ShowSidebar(visible));
             }
             Msg::ShowPreferences => self.preferences_menu.widget().present(),
             Msg::ChangeRadix(radix) => self

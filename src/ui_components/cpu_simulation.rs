@@ -29,10 +29,7 @@ pub enum SimulationMsg {
     ShowMessage(String),
     ChangeRadix(Radices),
     ResizeHistory(usize),
-    ShowSidebar,
-    HideSidebar,
-    ShowButton,
-    HideButton,
+    ShowSidebar(bool),
 }
 
 #[derive(Debug)]
@@ -43,6 +40,8 @@ pub enum SimulationCmd {
 #[derive(Debug)]
 pub enum SimulationOutput {
     ShowMessage(String),
+    ShowSidebarButton(bool),
+    ShowSidebar(bool),
 }
 
 pub struct CPUSimulation {
@@ -54,7 +53,6 @@ pub struct CPUSimulation {
     app_to_thread: Option<Sender<()>>,
     cpu_running: bool,
     sidebar_visible: bool,
-    sidebar_button_visible: bool,
     idx: usize,
 }
 
@@ -75,16 +73,13 @@ impl FactoryComponent for CPUSimulation {
             adw::Flap {
                 connect_reveal_flap_notify[sender] => move |val| {
                     match (val.reveals_flap(), val.is_folded()) {
-                        (true, true) => sender.input(SimulationMsg::ShowSidebar),
-                        (false, true) => sender.input(SimulationMsg::HideSidebar),
+                        (true, true) => sender.output(SimulationOutput::ShowSidebar(true)).unwrap(),
+                        (false, true) => sender.output(SimulationOutput::ShowSidebar(false)).unwrap(),
                         _ => {},
                     }
                 },
                 connect_folded_notify[sender] => move |val| {
-                    match val.is_folded() {
-                        true => sender.input(SimulationMsg::ShowButton),
-                        false => sender.input(SimulationMsg::HideButton),
-                    }
+                    sender.output(SimulationOutput::ShowSidebarButton(val.is_folded())).unwrap()
                 },
                 #[watch]
                 set_locked: self.sidebar_visible,
@@ -124,20 +119,6 @@ impl FactoryComponent for CPUSimulation {
                     set_stack: Some(&stack),
                 },
 
-                pack_start = &gtk::ToggleButton {
-                    #[watch]
-                    set_visible: self.sidebar_button_visible,
-                    #[watch]
-                    set_active: self.sidebar_visible,
-                    set_icon_name: icon_name::DOCK_LEFT,
-                    connect_clicked[sender] => move |val| {
-                        match val.is_active() {
-                            true => sender.input(SimulationMsg::ShowSidebar),
-                            false => sender.input(SimulationMsg::HideSidebar),
-                        }
-                    },
-                    set_tooltip_text: Some("Show Text"),
-                },
                 pack_start = &gtk::Button {
                     #[watch]
                     set_sensitive: !self.cpu_running,
@@ -230,7 +211,6 @@ impl FactoryComponent for CPUSimulation {
             app_to_thread: None,
             cpu_running: false,
             sidebar_visible: false,
-            sidebar_button_visible: true,
             idx: count,
         }
     }
@@ -306,10 +286,7 @@ impl FactoryComponent for CPUSimulation {
                     .emit(CPUViewMessage::Update(self.history.get_curr().clone()));
             }
             SimulationMsg::ResizeHistory(size) => self.history.resize(size),
-            SimulationMsg::ShowSidebar => self.sidebar_visible = true,
-            SimulationMsg::HideSidebar => self.sidebar_visible = false,
-            SimulationMsg::ShowButton => self.sidebar_button_visible = true,
-            SimulationMsg::HideButton => self.sidebar_button_visible = false,
+            SimulationMsg::ShowSidebar(visible) => self.sidebar_visible = visible,
             SimulationMsg::ChangeRadix(radix) => {
                 self.simple_view.emit(CPUViewMessage::ChangeRadix(radix));
                 self.component_view.emit(CPUViewMessage::ChangeRadix(radix));
