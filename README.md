@@ -2,7 +2,7 @@
 ### Linux/WSL
 1. Install [rustup](https://rustup.rs/)
 2. Install **gtk4** and **libadwaita**
-    - For Fedora users: `dnf install gkt4-devel libadwaita-devel`
+    - For Fedora users: `dnf install gtk4-devel glib2-devel libadwaita-devel`
 3. Run `cargo build`
 
 ### MacOS

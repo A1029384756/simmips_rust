@@ -13,8 +13,8 @@ pub enum ColorScheme {
 #[derive(Debug)]
 pub struct Preferences {
     color_scheme: ColorScheme,
-    history_size: usize,
-    radix: Radices,
+    pub history_size: usize,
+    pub radix: Radices,
 }
 
 #[derive(Debug)]
