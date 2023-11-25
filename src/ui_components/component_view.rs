@@ -10,6 +10,16 @@ use rayon::prelude::*;
 use relm4::drawing::DrawHandler;
 use relm4::prelude::*;
 
+#[cfg(not(windows))]
+macro_rules! main_separator{
+    ()=>{"/"}
+}
+
+#[cfg(windows)]
+macro_rules! main_separator{
+    ()=>{r#"\"#}
+}
+
 pub struct ComponentView {
     handler: DrawHandler,
     imgs: Vec<Vec<u8>>,
@@ -46,36 +56,37 @@ impl SimpleComponent for ComponentView {
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let imgs = vec![
-            Vec::from(include_bytes!("resources/component_view.svg")),
-            Vec::from(include_bytes!("resources/regdst_ra.svg")),
-            Vec::from(include_bytes!("resources/regdst_rd.svg")),
-            Vec::from(include_bytes!("resources/regdst_rt.svg")),
-            Vec::from(include_bytes!("resources/alu_src.svg")),
-            Vec::from(include_bytes!("resources/reg_write_memread.svg")),
-            Vec::from(include_bytes!("resources/reg_write_pcinc.svg")),
-            Vec::from(include_bytes!("resources/reg_write_aluresult.svg")),
-            Vec::from(include_bytes!("resources/reg_write_imm.svg")),
-            Vec::from(include_bytes!("resources/reg_write.svg")),
-            Vec::from(include_bytes!("resources/mem_read_byte.svg")),
-            Vec::from(include_bytes!("resources/mem_read_half.svg")),
-            Vec::from(include_bytes!("resources/mem_read_word.svg")),
-            Vec::from(include_bytes!("resources/mem_write_byte.svg")),
-            Vec::from(include_bytes!("resources/mem_write_half.svg")),
-            Vec::from(include_bytes!("resources/mem_write_word.svg")),
-            Vec::from(include_bytes!("resources/pcsrc_branch.svg")),
-            Vec::from(include_bytes!("resources/pcsrc_pc.svg")),
-            Vec::from(include_bytes!("resources/pcsrc_jump.svg")),
-            Vec::from(include_bytes!("resources/pcsrc_regjump.svg")),
-            Vec::from(include_bytes!("resources/aluop_rtype.svg")),
-            Vec::from(include_bytes!("resources/aluop_add.svg")),
-            Vec::from(include_bytes!("resources/aluop_addu.svg")),
-            Vec::from(include_bytes!("resources/aluop_sub.svg")),
-            Vec::from(include_bytes!("resources/aluop_and.svg")),
-            Vec::from(include_bytes!("resources/aluop_or.svg")),
-            Vec::from(include_bytes!("resources/aluop_slt.svg")),
-            Vec::from(include_bytes!("resources/aluop_sltu.svg")),
-            Vec::from(include_bytes!("resources/beq.svg")),
-            Vec::from(include_bytes!("resources/bne.svg")),
+            Vec::from(include_bytes!(concat!("resources", main_separator!(), "component_view.svg"))),
+            Vec::from(include_bytes!(concat!("resources", main_separator!(), "component_view.svg"))),
+            Vec::from(include_bytes!(concat!("resources", main_separator!(), "regdst_ra.svg"))),
+            Vec::from(include_bytes!(concat!("resources", main_separator!(), "regdst_rd.svg"))),
+            Vec::from(include_bytes!(concat!("resources", main_separator!(), "regdst_rt.svg"))),
+            Vec::from(include_bytes!(concat!("resources", main_separator!(), "alu_src.svg"))),
+            Vec::from(include_bytes!(concat!("resources", main_separator!(), "reg_write_memread.svg"))),
+            Vec::from(include_bytes!(concat!("resources", main_separator!(), "reg_write_pcinc.svg"))),
+            Vec::from(include_bytes!(concat!("resources", main_separator!(), "reg_write_aluresult.svg"))),
+            Vec::from(include_bytes!(concat!("resources", main_separator!(), "reg_write_imm.svg"))),
+            Vec::from(include_bytes!(concat!("resources", main_separator!(), "reg_write.svg"))),
+            Vec::from(include_bytes!(concat!("resources", main_separator!(), "mem_read_byte.svg"))),
+            Vec::from(include_bytes!(concat!("resources", main_separator!(), "mem_read_half.svg"))),
+            Vec::from(include_bytes!(concat!("resources", main_separator!(), "mem_read_word.svg"))),
+            Vec::from(include_bytes!(concat!("resources", main_separator!(), "mem_write_byte.svg"))),
+            Vec::from(include_bytes!(concat!("resources", main_separator!(), "mem_write_half.svg"))),
+            Vec::from(include_bytes!(concat!("resources", main_separator!(), "mem_write_word.svg"))),
+            Vec::from(include_bytes!(concat!("resources", main_separator!(), "pcsrc_branch.svg"))),
+            Vec::from(include_bytes!(concat!("resources", main_separator!(), "pcsrc_pc.svg"))),
+            Vec::from(include_bytes!(concat!("resources", main_separator!(), "pcsrc_jump.svg"))),
+            Vec::from(include_bytes!(concat!("resources", main_separator!(), "pcsrc_regjump.svg"))),
+            Vec::from(include_bytes!(concat!("resources", main_separator!(), "aluop_rtype.svg"))),
+            Vec::from(include_bytes!(concat!("resources", main_separator!(), "aluop_add.svg"))),
+            Vec::from(include_bytes!(concat!("resources", main_separator!(), "aluop_addu.svg"))),
+            Vec::from(include_bytes!(concat!("resources", main_separator!(), "aluop_sub.svg"))),
+            Vec::from(include_bytes!(concat!("resources", main_separator!(), "aluop_and.svg"))),
+            Vec::from(include_bytes!(concat!("resources", main_separator!(), "aluop_or.svg"))),
+            Vec::from(include_bytes!(concat!("resources", main_separator!(), "aluop_slt.svg"))),
+            Vec::from(include_bytes!(concat!("resources", main_separator!(), "aluop_sltu.svg"))),
+            Vec::from(include_bytes!(concat!("resources", main_separator!(), "beq.svg"))),
+            Vec::from(include_bytes!(concat!("resources", main_separator!(), "bne.svg"))),
         ];
 
         let model = ComponentView {
