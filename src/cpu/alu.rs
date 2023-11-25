@@ -1,5 +1,6 @@
 use super::control_unit::AluOp;
 
+#[derive(Debug, Clone, Copy, Default)]
 pub enum AluOperation {
     Add,
     Addu,
@@ -12,6 +13,7 @@ pub enum AluOperation {
     Sltu,
     Sll,
     Srl,
+    #[default]
     None,
 }
 

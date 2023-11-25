@@ -1,13 +1,20 @@
+use crate::cpu::control_unit::{Mem, MemToReg, PCSrc, RegDst};
+use crate::cpu::cpu_interface::CPUInterface;
+use crate::cpu::single_cycle_cpu::SingleCycleCPU;
+
 use super::CPUViewMessage;
 use gdk_pixbuf::gio::MemoryInputStream;
 use gdk_pixbuf::Pixbuf;
 use gtk::prelude::*;
+use rayon::prelude::*;
 use relm4::drawing::DrawHandler;
 use relm4::prelude::*;
 
 pub struct ComponentView {
     handler: DrawHandler,
     imgs: Vec<Vec<u8>>,
+    size: (i32, i32),
+    cpu: SingleCycleCPU,
 }
 
 #[relm4::component(pub)]
@@ -40,12 +47,42 @@ impl SimpleComponent for ComponentView {
     ) -> ComponentParts<Self> {
         let imgs = vec![
             Vec::from(include_bytes!("resources/component_view.svg")),
-            Vec::from(include_bytes!("resources/component_view_2.svg")),
+            Vec::from(include_bytes!("resources/regdst_ra.svg")),
+            Vec::from(include_bytes!("resources/regdst_rd.svg")),
+            Vec::from(include_bytes!("resources/regdst_rt.svg")),
+            Vec::from(include_bytes!("resources/alu_src.svg")),
+            Vec::from(include_bytes!("resources/reg_write_memread.svg")),
+            Vec::from(include_bytes!("resources/reg_write_pcinc.svg")),
+            Vec::from(include_bytes!("resources/reg_write_aluresult.svg")),
+            Vec::from(include_bytes!("resources/reg_write_imm.svg")),
+            Vec::from(include_bytes!("resources/reg_write.svg")),
+            Vec::from(include_bytes!("resources/mem_read_byte.svg")),
+            Vec::from(include_bytes!("resources/mem_read_half.svg")),
+            Vec::from(include_bytes!("resources/mem_read_word.svg")),
+            Vec::from(include_bytes!("resources/mem_write_byte.svg")),
+            Vec::from(include_bytes!("resources/mem_write_half.svg")),
+            Vec::from(include_bytes!("resources/mem_write_word.svg")),
+            Vec::from(include_bytes!("resources/pcsrc_branch.svg")),
+            Vec::from(include_bytes!("resources/pcsrc_pc.svg")),
+            Vec::from(include_bytes!("resources/pcsrc_jump.svg")),
+            Vec::from(include_bytes!("resources/pcsrc_regjump.svg")),
+            Vec::from(include_bytes!("resources/aluop_rtype.svg")),
+            Vec::from(include_bytes!("resources/aluop_add.svg")),
+            Vec::from(include_bytes!("resources/aluop_addu.svg")),
+            Vec::from(include_bytes!("resources/aluop_sub.svg")),
+            Vec::from(include_bytes!("resources/aluop_and.svg")),
+            Vec::from(include_bytes!("resources/aluop_or.svg")),
+            Vec::from(include_bytes!("resources/aluop_slt.svg")),
+            Vec::from(include_bytes!("resources/aluop_sltu.svg")),
+            Vec::from(include_bytes!("resources/beq.svg")),
+            Vec::from(include_bytes!("resources/bne.svg")),
         ];
 
         let model = ComponentView {
             handler: DrawHandler::new(),
             imgs,
+            size: (0, 0),
+            cpu: SingleCycleCPU::default(),
         };
 
         let area = model.handler.drawing_area();
@@ -54,45 +91,127 @@ impl SimpleComponent for ComponentView {
     }
 
     fn update(&mut self, msg: Self::Input, _sender: ComponentSender<Self>) {
-        let cx = self.handler.get_context();
         match msg {
-            CPUViewMessage::Update(_cpu) => {}
+            CPUViewMessage::Update(cpu) => {
+                self.cpu = cpu;
+                self.draw();
+            }
             CPUViewMessage::Resize(size) => {
-                let base_buf =
-                    Pixbuf::new(gdk_pixbuf::Colorspace::Rgb, true, 8, size.0, size.1).unwrap();
-
-                self.imgs.iter().for_each(|img_data| {
-                    let stream =
-                        MemoryInputStream::from_bytes(&gdk_pixbuf::glib::Bytes::from(img_data));
-
-                    let buf = gdk_pixbuf::Pixbuf::from_stream_at_scale(
-                        &stream,
-                        size.0 - 10,
-                        size.1 - 10,
-                        true,
-                        None::<&gdk_pixbuf::gio::Cancellable>,
-                    )
-                    .unwrap();
-
-                    buf.composite(
-                        &base_buf,
-                        0,
-                        0,
-                        buf.width(),
-                        buf.height(),
-                        0.0,
-                        0.0,
-                        1.0,
-                        1.0,
-                        gdk_pixbuf::InterpType::Nearest,
-                        255,
-                    );
-                });
-                cx.set_source_pixbuf(&base_buf, 0.0, 0.0);
-                cx.paint().expect("Could not fill context");
+                self.size = size;
+                self.draw();
             }
             CPUViewMessage::ChangeRadix(_) => {}
             CPUViewMessage::None => {}
         }
+    }
+}
+
+impl ComponentView {
+    fn draw(&mut self) {
+        let cx = self.handler.get_context();
+        cx.set_operator(gtk::cairo::Operator::Clear);
+        cx.set_source_rgba(0.0, 0.0, 0.0, 0.0);
+        cx.paint().expect("Couldn't fill context");
+        cx.set_operator(gtk::cairo::Operator::Source);
+
+        let mut drawn_images: Vec<usize> = vec![0];
+
+        let signals = self.cpu.get_control_signals();
+        match signals.reg_dst {
+            RegDst::RA => drawn_images.push(1),
+            RegDst::RD => drawn_images.push(2),
+            RegDst::RT => drawn_images.push(3),
+        }
+        if signals.alu_src {
+            drawn_images.push(4);
+        }
+        match signals.mem_to_reg {
+            MemToReg::MemoryRead => drawn_images.push(5),
+            MemToReg::PCInc => drawn_images.push(6),
+            MemToReg::ALUResult => drawn_images.push(7),
+            MemToReg::ImmLeftShift16 => drawn_images.push(8),
+        }
+        if signals.reg_write {
+            drawn_images.push(9);
+        }
+        match signals.mem_read {
+            Mem::None => {}
+            Mem::Byte => drawn_images.push(10),
+            Mem::Half => drawn_images.push(11),
+            Mem::Word => drawn_images.push(12),
+        }
+        match signals.mem_write {
+            Mem::None => {}
+            Mem::Byte => drawn_images.push(13),
+            Mem::Half => drawn_images.push(14),
+            Mem::Word => drawn_images.push(15),
+        }
+        match signals.pc_src {
+            PCSrc::PCBranch => drawn_images.push(16),
+            PCSrc::PC => drawn_images.push(17),
+            PCSrc::Jump => drawn_images.push(18),
+            PCSrc::RegJump => drawn_images.push(19),
+        }
+
+        let base_buf = Pixbuf::new(
+            gdk_pixbuf::Colorspace::Rgb,
+            true,
+            8,
+            self.size.0,
+            self.size.1,
+        )
+        .unwrap();
+
+        drawn_images.iter().for_each(|idx| {
+            let stream =
+                MemoryInputStream::from_bytes(&gdk_pixbuf::glib::Bytes::from(&self.imgs[*idx]));
+
+            let buf = gdk_pixbuf::Pixbuf::from_stream_at_scale(
+                &stream,
+                self.size.0 - 10,
+                self.size.1 - 10,
+                true,
+                None::<&gdk_pixbuf::gio::Cancellable>,
+            )
+            .unwrap();
+
+            buf.composite(
+                &base_buf,
+                0,
+                0,
+                buf.width(),
+                buf.height(),
+                0.0,
+                0.0,
+                1.0,
+                1.0,
+                gdk_pixbuf::InterpType::Nearest,
+                255,
+            );
+        });
+
+        let color_scheme = adw::StyleManager::default().color_scheme();
+        if match color_scheme {
+            adw::ColorScheme::Default => false,
+            adw::ColorScheme::ForceLight => true,
+            adw::ColorScheme::ForceDark => false,
+            _ => false,
+        } {
+            let pixels = unsafe { base_buf.pixels() };
+            pixels
+                .par_chunks_mut(base_buf.n_channels() as usize)
+                .for_each(|pixel| {
+                    fn invert(c: u8) -> u8 {
+                        (255 as i16 - c as i16) as u8
+                    }
+
+                    pixel[0] = invert(pixel[0]);
+                    pixel[1] = invert(pixel[1]);
+                    pixel[2] = invert(pixel[2]);
+                });
+        }
+
+        cx.set_source_pixbuf(&base_buf, 0.0, 0.0);
+        cx.paint().expect("Could not fill context");
     }
 }

@@ -1,6 +1,6 @@
 use super::{BEQ_OPCODE, BNE_OPCODE, JR_FUNCT};
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, Default)]
 pub enum AluOp {
     RType,
     Add,
@@ -10,9 +10,11 @@ pub enum AluOp {
     Or,
     Slt,
     Sltu,
+    #[default]
     None,
 }
 
+#[derive(Debug, Clone, Default)]
 pub struct ControlUnitOutput {
     pub reg_dst: RegDst,
     pub alu_src: bool,
@@ -24,31 +26,35 @@ pub struct ControlUnitOutput {
     pub alu_op: AluOp,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, Default)]
 pub enum MemToReg {
+    #[default]
     ALUResult,
     MemoryRead,
     PCInc,
     ImmLeftShift16,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, Default)]
 pub enum PCSrc {
+    #[default]
     PC,
     PCBranch,
     Jump,
     RegJump,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, Default)]
 pub enum RegDst {
+    #[default]
     RT,
     RD,
     RA,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, Default)]
 pub enum Mem {
+    #[default]
     None,
     Byte,
     Half,

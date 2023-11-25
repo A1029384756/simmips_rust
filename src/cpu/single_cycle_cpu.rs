@@ -20,6 +20,8 @@ pub struct SingleCycleCPU {
 
     instruction_memory: InstructionMemory,
     data_memory: DataMemory,
+    control_signals: ControlUnitOutput,
+    alu_control_signals: AluOperation,
 }
 
 impl CPUInterface for SingleCycleCPU {
@@ -47,11 +49,11 @@ impl CPUInterface for SingleCycleCPU {
     }
 
     fn get_control_signals(&self) -> ControlUnitOutput {
-        todo!()
+        self.control_signals.clone()
     }
 
     fn get_alu_signals(&self) -> AluOperation {
-        todo!()
+        self.alu_control_signals
     }
 
     fn step(&mut self) {
@@ -75,26 +77,26 @@ impl CPUInterface for SingleCycleCPU {
             let data_1 = self.registers.read(rs);
             let data_2 = self.registers.read(rt);
 
-            let control_signals = control_unit(opcode, funct);
-            let alu_control_signals = alu_control(control_signals.alu_op, funct);
+            self.control_signals = control_unit(opcode, funct);
+            self.alu_control_signals = alu_control(self.control_signals.alu_op, funct);
             let alu_result = alu(
                 data_1,
-                if control_signals.alu_src {
+                if self.control_signals.alu_src {
                     imm_sign_extended
                 } else {
                     data_2
                 },
                 shamt,
-                alu_control_signals,
+                self.alu_control_signals,
             );
 
-            let write_register = match control_signals.reg_dst {
+            let write_register = match self.control_signals.reg_dst {
                 RegDst::RT => rt,
                 RegDst::RD => rd,
                 RegDst::RA => 31,
             };
 
-            self.pc = match control_signals.pc_src {
+            self.pc = match self.control_signals.pc_src {
                 PCSrc::PCBranch if alu_result == 0 && opcode == BEQ_OPCODE => branch_addr,
                 PCSrc::PCBranch if alu_result != 0 && opcode == BNE_OPCODE => branch_addr,
                 PCSrc::PCBranch => inc_pc,
@@ -103,8 +105,8 @@ impl CPUInterface for SingleCycleCPU {
                 PCSrc::RegJump => rs,
             };
 
-            let read_data = self.data_memory.load(alu_result, control_signals.mem_read);
-            let reg_write_data = match control_signals.mem_to_reg {
+            let read_data = self.data_memory.load(alu_result, self.control_signals.mem_read);
+            let reg_write_data = match self.control_signals.mem_to_reg {
                 MemToReg::MemoryRead => match read_data {
                     Some(data) => data,
                     None => {
@@ -118,10 +120,10 @@ impl CPUInterface for SingleCycleCPU {
             };
 
             self.registers
-                .write(reg_write_data, write_register, control_signals.reg_write);
+                .write(reg_write_data, write_register, self.control_signals.reg_write);
             if matches!(
                 self.data_memory
-                    .store(rt, alu_result, control_signals.mem_write),
+                    .store(rt, alu_result, self.control_signals.mem_write),
                 Err(())
             ) {
                 self.error_message = Some(format!("Invalid memory write address: {}", rt));
@@ -144,8 +146,10 @@ impl SingleCycleCPU {
             error_message: None,
             registers: [0; 32],
             pc: INST_MEM_START,
-            data_memory: vec![0; 1024],
+            data_memory: vec![0; 16],
             instruction_memory: Vec::new(),
+            control_signals: ControlUnitOutput::default(),
+            alu_control_signals: AluOperation::default(),
         }
     }
 
@@ -156,6 +160,8 @@ impl SingleCycleCPU {
             pc: INST_MEM_START,
             instruction_memory,
             data_memory,
+            control_signals: ControlUnitOutput::default(),
+            alu_control_signals: AluOperation::default(),
         }
     }
 }

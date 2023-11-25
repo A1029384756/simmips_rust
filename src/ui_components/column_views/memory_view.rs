@@ -118,15 +118,18 @@ impl SimpleComponent for MemoryView {
         match msg {
             MemoryMsg::UpdateMemory(new_mem) => {
                 let v = self.view_wrapper.get(0);
-                let radix = v.iter().next().unwrap().borrow().value.radix;
 
-                self.view_wrapper.clear();
-                new_mem.into_iter().enumerate().for_each(|(idx, val)| {
-                    self.view_wrapper.append(MemoryRow {
-                        addr: idx as u32,
-                        value: RadixedValue { radix, value: val },
-                    });
-                })
+                if let Some(radix) = v.iter().next() {
+                    let radix = radix.borrow().value.radix;
+
+                    self.view_wrapper.clear();
+                    new_mem.into_iter().enumerate().for_each(|(idx, val)| {
+                        self.view_wrapper.append(MemoryRow {
+                            addr: idx as u32,
+                            value: RadixedValue { radix, value: val },
+                        });
+                    })
+                }
             }
             MemoryMsg::UpdateRadix(radix) => {
                 let mut new_list: Vec<u8> = Vec::new();
