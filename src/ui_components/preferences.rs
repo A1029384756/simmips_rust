@@ -28,6 +28,7 @@ pub enum UpdatePreferencesInput {
 pub enum UpdatePreferencesOutput {
     HistorySizeChanged(usize),
     RadixChanged(Radices),
+    ThemeChanged,
 }
 
 #[relm4::component(pub)]
@@ -146,17 +147,23 @@ impl Component for Preferences {
 
     fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>, _root: &Self::Root) {
         match message {
-            UpdatePreferencesInput::ColorScheme(color) => match color {
-                ColorScheme::Light => {
-                    adw::StyleManager::default().set_color_scheme(adw::ColorScheme::ForceLight);
-                }
-                ColorScheme::Dark => {
-                    adw::StyleManager::default().set_color_scheme(adw::ColorScheme::ForceDark);
-                }
-                ColorScheme::Default => {
-                    adw::StyleManager::default().set_color_scheme(adw::ColorScheme::Default);
-                }
-            },
+            UpdatePreferencesInput::ColorScheme(color) => {
+                match color {
+                    ColorScheme::Light => {
+                        adw::StyleManager::default().set_color_scheme(adw::ColorScheme::ForceLight);
+                    }
+                    ColorScheme::Dark => {
+                        adw::StyleManager::default().set_color_scheme(adw::ColorScheme::ForceDark);
+                    }
+                    ColorScheme::Default => {
+                        adw::StyleManager::default().set_color_scheme(adw::ColorScheme::Default);
+                    }
+                };
+
+                sender
+                    .output(UpdatePreferencesOutput::ThemeChanged)
+                    .unwrap();
+            }
             UpdatePreferencesInput::HistorySize(size) => {
                 if self.history_size != size {
                     self.history_size = size;

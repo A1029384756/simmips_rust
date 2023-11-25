@@ -153,6 +153,10 @@ impl ComponentView {
             PCSrc::RegJump => drawn_images.push(19),
         }
 
+        if self.size == (0, 0) {
+            return
+        }
+
         let base_buf = Pixbuf::new(
             gdk_pixbuf::Colorspace::Rgb,
             true,

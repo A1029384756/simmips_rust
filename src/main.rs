@@ -35,6 +35,7 @@ pub enum Msg {
     ShowPreferences,
     ResizeHistory(usize),
     ChangeRadix(Radices),
+    ChangeTheme,
 
     NewTab,
     OpenRequest(DynamicIndex),
@@ -117,6 +118,7 @@ impl Component for App {
                 .forward(sender.input_sender(), |msg| match msg {
                     UpdatePreferencesOutput::HistorySizeChanged(size) => Msg::ResizeHistory(size),
                     UpdatePreferencesOutput::RadixChanged(radix) => Msg::ChangeRadix(radix),
+                    UpdatePreferencesOutput::ThemeChanged => Msg::ChangeTheme,
                 });
 
         let file_chooser = OpenDialog::builder()
@@ -170,6 +172,7 @@ impl Component for App {
             Msg::ChangeRadix(radix) => self
                 .simulations
                 .broadcast(SimulationMsg::ChangeRadix(radix)),
+            Msg::ChangeTheme => self.simulations.broadcast(SimulationMsg::UpdateViews),
             Msg::ResizeHistory(size) => self
                 .simulations
                 .broadcast(SimulationMsg::ResizeHistory(size)),
