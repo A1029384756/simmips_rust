@@ -10,6 +10,7 @@ num-traits = "0.2.15"
 relm4-components = "0.7.0-beta.2"
 libadwaita = { version = "0.5.3", features = ["v1_3"] }
 anyhow = "1.0.75"
+gdk-pixbuf = "0.18.3"
 
 [dependencies.relm4]
 version = "0.7.0-beta.2"

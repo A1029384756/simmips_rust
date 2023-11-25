@@ -1,4 +1,4 @@
-use crate::cpu::{cpu_interface::CPUInterface, single_cycle_cpu::SingleCycleCPU};
+use crate::cpu::single_cycle_cpu::SingleCycleCPU;
 
 use self::column_views::Radices;
 
