@@ -2,7 +2,7 @@ name: Rust
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "master", "develop" ]
   pull_request:
     branches: [ "master" ]
 
@@ -11,13 +11,9 @@ env:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/a1029384756/simmips_rust/gtk:latest
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.github_token }}
     strategy:
       matrix:
         rust:
@@ -38,8 +34,6 @@ jobs:
   fmt:
     name: rustfmt
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/gtk-rs/gtk4-rs/gtk4:latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rs/toolchain@v1
