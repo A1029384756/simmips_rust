@@ -133,7 +133,10 @@ impl SimpleComponent for RegisterView {
             });
         });
 
-        let model = RegisterView { view_wrapper, curr_radix: Radices::Hex };
+        let model = RegisterView {
+            view_wrapper,
+            curr_radix: Radices::Hex,
+        };
 
         let my_view = &model.view_wrapper.view;
         my_view.set_show_row_separators(true);
