@@ -105,7 +105,9 @@ impl CPUInterface for SingleCycleCPU {
                 PCSrc::RegJump => rs,
             };
 
-            let read_data = self.data_memory.load(alu_result, self.control_signals.mem_read);
+            let read_data = self
+                .data_memory
+                .load(alu_result, self.control_signals.mem_read);
             let reg_write_data = match self.control_signals.mem_to_reg {
                 MemToReg::MemoryRead => match read_data {
                     Some(data) => data,
@@ -119,8 +121,11 @@ impl CPUInterface for SingleCycleCPU {
                 MemToReg::ImmLeftShift16 => immediate << 16,
             };
 
-            self.registers
-                .write(reg_write_data, write_register, self.control_signals.reg_write);
+            self.registers.write(
+                reg_write_data,
+                write_register,
+                self.control_signals.reg_write,
+            );
             if matches!(
                 self.data_memory
                     .store(rt, alu_result, self.control_signals.mem_write),

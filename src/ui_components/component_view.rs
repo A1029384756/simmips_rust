@@ -3,13 +3,13 @@ use crate::cpu::cpu_interface::CPUInterface;
 use crate::cpu::single_cycle_cpu::SingleCycleCPU;
 
 use super::CPUViewMessage;
+use crate::main_separator;
 use gdk_pixbuf::gio::MemoryInputStream;
 use gdk_pixbuf::Pixbuf;
 use gtk::prelude::*;
 use rayon::prelude::*;
 use relm4::drawing::DrawHandler;
 use relm4::prelude::*;
-use crate::main_separator;
 
 pub struct ComponentView {
     handler: DrawHandler,

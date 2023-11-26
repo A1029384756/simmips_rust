@@ -15,7 +15,10 @@ use super::{
     simple_view::SimpleView,
     CPUViewMessage,
 };
-use crate::cpu::{cpu_interface::{CPUInterface, RegisterKind}, single_cycle_cpu::SingleCycleCPU};
+use crate::cpu::{
+    cpu_interface::{CPUInterface, RegisterKind},
+    single_cycle_cpu::SingleCycleCPU,
+};
 
 #[derive(Debug, Clone)]
 pub enum SimulationMsg {
@@ -265,7 +268,9 @@ impl FactoryComponent for CPUSimulation {
                     .emit(CPUViewMessage::Update(self.history.get_curr().clone()));
                 self.component_view
                     .emit(CPUViewMessage::Update(self.history.get_curr().clone()));
-                self.asm_view.emit(AsmViewMsg::SetLine(self.history.get_curr().get_register(RegisterKind::RegPC)));
+                self.asm_view.emit(AsmViewMsg::SetLine(
+                    self.history.get_curr().get_register(RegisterKind::RegPC),
+                ));
                 self.asm_view.emit(AsmViewMsg::UpdateTheme);
             }
             SimulationMsg::ResizeHistory(size) => self.history.resize(size),

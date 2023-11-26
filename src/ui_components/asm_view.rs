@@ -109,7 +109,7 @@ impl SimpleComponent for AsmView {
             AsmViewMsg::SetLine(pc) => {
                 self.curr_line = (pc - 0x00400000) >> 2;
                 self.highlight_assembly();
-            },
+            }
             AsmViewMsg::UpdateTheme => self.set_theme_dark(adw::StyleManager::default().is_dark()),
         }
     }
