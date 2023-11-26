@@ -2,12 +2,12 @@
 ### Linux/WSL
 1. Install [rustup](https://rustup.rs/)
 2. Install **gtk4** and **libadwaita**
-    - For Fedora users: `dnf install gtk4-devel glib2-devel libadwaita-devel`
+    - For Fedora users: `dnf install gtk4-devel glib2-devel libadwaita-devel gtksourceview5-devel`
 3. Run `cargo build`
 
 ### MacOS
 1. Install [rustup](https://rustup.rs/)
-2. Install **gtk4** and **libadwaita** with `brew install gtk4 libadwaita pkg-config`
+2. Install **gtk4** and **libadwaita** with `brew install gtk4 libadwaita pkg-config gtksourceview5`
 3. Run `cargo build`
 
 ### Windows 
@@ -24,3 +24,6 @@
     C:\msys64\mingw64\lib
     ```
 8. Run `cargo build`
+
+### TODO
+Add command for gtksourceview5-devel install to windows instructions

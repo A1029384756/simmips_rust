@@ -8,10 +8,14 @@ use relm4::prelude::*;
 use relm4_icons::icon_name;
 
 use super::{
-    column_views::Radices, component_view::ComponentView, history::History,
-    simple_view::SimpleView, CPUViewMessage,
+    asm_view::{AsmView, AsmViewMsg},
+    column_views::Radices,
+    component_view::ComponentView,
+    history::History,
+    simple_view::SimpleView,
+    CPUViewMessage,
 };
-use crate::cpu::{cpu_interface::CPUInterface, single_cycle_cpu::SingleCycleCPU};
+use crate::cpu::{cpu_interface::{CPUInterface, RegisterKind}, single_cycle_cpu::SingleCycleCPU};
 
 #[derive(Debug, Clone)]
 pub enum SimulationMsg {
@@ -46,8 +50,9 @@ pub enum SimulationOutput {
 pub struct CPUSimulation {
     simple_view: Controller<SimpleView>,
     component_view: Controller<ComponentView>,
+    asm_view: Controller<AsmView>,
     history: History<SingleCycleCPU>,
-    asm_view_buffer: gtk::TextBuffer,
+    curr_asm: String,
     app_to_thread: Option<Sender<()>>,
     cpu_running: bool,
     sidebar_visible: bool,
@@ -84,16 +89,7 @@ impl FactoryComponent for CPUSimulation {
                 #[watch]
                 set_reveal_flap: self.sidebar_visible || !flap.is_folded(),
                 #[wrap(Some)]
-                set_flap = &gtk::ScrolledWindow {
-                    set_width_request: 500,
-                    gtk::TextView {
-                        set_vexpand: true,
-                        set_editable: false,
-                        set_monospace: true,
-                        set_cursor_visible: false,
-                        set_buffer: Some(&self.asm_view_buffer),
-                    },
-                },
+                set_flap = self.asm_view.widget(),
                 #[wrap(Some)]
                 set_content = &gtk::Box {
                     set_width_request: 600,
@@ -184,20 +180,16 @@ impl FactoryComponent for CPUSimulation {
             .launch(())
             .forward(sender.input_sender(), |_| SimulationMsg::Ignore);
 
-        let tag_table = gtk::TextTagTable::new();
-        tag_table.add(
-            &gtk::TextTag::builder()
-                .name("line_highlight")
-                .paragraph_background("yellow")
-                .foreground("black")
-                .build(),
-        );
+        let asm_view = AsmView::builder()
+            .launch(())
+            .forward(sender.input_sender(), |_| SimulationMsg::Ignore);
 
         Self {
             simple_view,
             component_view,
+            asm_view,
             history: History::new(10),
-            asm_view_buffer: gtk::TextBuffer::new(Some(&tag_table)),
+            curr_asm: String::default(),
             app_to_thread: None,
             cpu_running: false,
             sidebar_visible: false,
@@ -212,12 +204,14 @@ impl FactoryComponent for CPUSimulation {
                     match parse(&contents) {
                         Ok((inst_mem, data_mem)) => {
                             self.history
-                                .reset(SingleCycleCPU::new_from_memory(inst_mem, data_mem));
+                                .reset(SingleCycleCPU::new_from_memory(inst_mem.clone(), data_mem));
                             sender.input(SimulationMsg::UpdateViews);
+                            self.asm_view
+                                .emit(AsmViewMsg::UpdateData(contents.clone(), inst_mem));
+                            self.curr_asm = contents;
                         }
                         Err(err) => sender.input(SimulationMsg::ShowMessage(err)),
                     };
-                    self.asm_view_buffer.set_text(&contents);
                 }
                 Err(e) => sender.input(SimulationMsg::ShowMessage(e.to_string())),
             },
@@ -255,14 +249,12 @@ impl FactoryComponent for CPUSimulation {
                 .output(SimulationOutput::ShowMessage(message))
                 .unwrap(),
             SimulationMsg::ResetSimulation => {
-                match parse(&self.asm_view_buffer.text(
-                    &self.asm_view_buffer.start_iter(),
-                    &self.asm_view_buffer.end_iter(),
-                    true,
-                )) {
+                match parse(&self.curr_asm) {
                     Ok((inst_mem, data_mem)) => {
                         self.history
-                            .reset(SingleCycleCPU::new_from_memory(inst_mem, data_mem));
+                            .reset(SingleCycleCPU::new_from_memory(inst_mem.clone(), data_mem));
+                        self.asm_view
+                            .emit(AsmViewMsg::UpdateData(self.curr_asm.clone(), inst_mem));
                         sender.input(SimulationMsg::UpdateViews);
                     }
                     Err(err) => sender.input(SimulationMsg::ShowMessage(err)),
@@ -273,6 +265,8 @@ impl FactoryComponent for CPUSimulation {
                     .emit(CPUViewMessage::Update(self.history.get_curr().clone()));
                 self.component_view
                     .emit(CPUViewMessage::Update(self.history.get_curr().clone()));
+                self.asm_view.emit(AsmViewMsg::SetLine(self.history.get_curr().get_register(RegisterKind::RegPC)));
+                self.asm_view.emit(AsmViewMsg::UpdateTheme);
             }
             SimulationMsg::ResizeHistory(size) => self.history.resize(size),
             SimulationMsg::ShowSidebar(visible) => self.sidebar_visible = visible,

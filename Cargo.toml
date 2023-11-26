@@ -12,6 +12,7 @@ libadwaita = { version = "0.5.3", features = ["v1_3"] }
 anyhow = "1.0.75"
 gdk-pixbuf = "0.18.3"
 rayon = "1.8.0"
+sourceview5 = "0.7.1"
 
 [dependencies.relm4]
 version = "0.7.0-beta.2"

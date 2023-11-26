@@ -9,20 +9,7 @@ use gtk::prelude::*;
 use rayon::prelude::*;
 use relm4::drawing::DrawHandler;
 use relm4::prelude::*;
-
-#[cfg(not(windows))]
-macro_rules! main_separator {
-    () => {
-        "/"
-    };
-}
-
-#[cfg(windows)]
-macro_rules! main_separator {
-    () => {
-        r#"\"#
-    };
-}
+use crate::main_separator;
 
 pub struct ComponentView {
     handler: DrawHandler,
