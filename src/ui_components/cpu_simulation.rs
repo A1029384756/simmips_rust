@@ -208,10 +208,10 @@ impl FactoryComponent for CPUSimulation {
                         Ok((inst_mem, data_mem)) => {
                             self.history
                                 .reset(SingleCycleCPU::new_from_memory(inst_mem.clone(), data_mem));
-                            sender.input(SimulationMsg::UpdateViews);
                             self.asm_view
                                 .emit(AsmViewMsg::UpdateData(contents.clone(), inst_mem));
                             self.curr_asm = contents;
+                            sender.input(SimulationMsg::UpdateViews);
                         }
                         Err(err) => sender.input(SimulationMsg::ShowMessage(err)),
                     };
