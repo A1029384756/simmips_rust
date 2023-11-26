@@ -1,106 +1,146 @@
+mod cpu;
 mod ui_components;
-mod utils;
-mod virtual_machine;
 
-use std::convert::identity;
 use std::path::PathBuf;
-use std::sync::mpsc;
-use std::sync::mpsc::Sender;
 
-use ui_components::info_dialog::*;
+use adw::prelude::*;
+use gtk::glib;
+use relm4::{factory::FactoryVecDeque, prelude::*};
 
-use gtk::prelude::*;
-use num_traits::FromPrimitive;
-use relm4::prelude::*;
-use relm4_components::open_dialog::*;
-use ui_components::column_views::memory_view::{MemoryMsg, MemoryView};
-use ui_components::column_views::register_view::{RegMsg, RegisterView};
-use utils::highlight_line;
-use virtual_machine::lexer::tokenize;
-use virtual_machine::parser::parse_vm;
-use virtual_machine::virtual_machine_interface::VirtualMachineInterface;
-use virtual_machine::virtualmachine::VirtualMachine;
+use relm4_components::open_dialog::{OpenDialog, OpenDialogMsg, OpenDialogResponse};
+use relm4_icons::icon_name;
+use ui_components::{
+    column_views::Radices,
+    cpu_simulation::{CPUSimulation, SimulationMsg, SimulationOutput},
+};
+
+use crate::ui_components::preferences::{Preferences, UpdatePreferencesOutput};
 
 struct App {
-    open_dialog: Controller<OpenDialog>,
-    info_dialog: Controller<InfoDialog>,
-    vm: VirtualMachine,
-    asm_view_buffer: gtk::TextBuffer,
-    register_view: Controller<RegisterView>,
-    memory_view: Controller<MemoryView>,
-    app_to_thread: Option<Sender<()>>,
-    vm_running: bool,
+    simulations: FactoryVecDeque<CPUSimulation>,
+    preferences_menu: Controller<Preferences>,
+    file_chooser: Controller<OpenDialog>,
+    file_tab: Option<DynamicIndex>,
+    sidebar_button_visible: bool,
+    sidebar_visible: bool,
+    tab_count: usize,
 }
 
 #[derive(Debug)]
 pub enum Msg {
-    OpenRequest,
-    OpenResponse(PathBuf),
-    Ignore,
-    Step,
-    Run,
-    Break,
-    ResetSimulation,
     ShowMessage(String),
-}
+    ShowSidebarButton(bool),
+    ShowSidebar(bool),
 
-#[derive(Debug)]
-enum CommandMsg {
-    ThreadFinished(VirtualMachine),
+    ShowPreferences,
+    ResizeHistory(usize),
+    ChangeRadix(Radices),
+    ChangeTheme,
+
+    NewTab,
+    OpenRequest(DynamicIndex),
+    OpenResponse(PathBuf),
+
+    Ignore,
 }
 
 #[relm4::component]
 impl Component for App {
-    type CommandOutput = CommandMsg;
     type Input = Msg;
     type Output = ();
+    type CommandOutput = ();
     type Init = ();
+
+    view! {
+        adw::Window {
+            set_default_size: (1000, 800),
+
+            gtk::Box {
+                set_orientation: gtk::Orientation::Vertical,
+
+                adw::HeaderBar {
+                    #[wrap(Some)]
+                    set_title_widget = &gtk::Label { set_markup: "<b>SIMMIPS</b>" },
+
+                    pack_start = &gtk::ToggleButton {
+                        #[watch]
+                        set_visible: model.sidebar_button_visible,
+                        #[watch]
+                        set_active: model.sidebar_visible,
+                        set_icon_name: icon_name::DOCK_LEFT,
+                        connect_clicked[sender] => move |val| {
+                            sender.input(Msg::ShowSidebar(val.is_active()))
+                        },
+                        set_tooltip_text: Some("Show Text"),
+                    },
+
+                    pack_end = &gtk::Button {
+                        set_icon_name: icon_name::SETTINGS,
+                        connect_clicked => Msg::ShowPreferences,
+                        set_tooltip_text: Some("Preferences"),
+                    },
+
+                    pack_end = &gtk::Button {
+                        #[watch]
+                        set_icon_name: icon_name::PLUS,
+                        connect_clicked[sender] => move |_| { sender.input(Msg::NewTab) },
+                        set_tooltip_text: Some("New Tab"),
+                    },
+                },
+
+                adw::TabBar {
+                    set_view: Some(tab_view),
+                },
+
+                #[local_ref]
+                tab_view -> adw::TabView {}
+            },
+        },
+    }
 
     fn init(
         _: Self::Init,
         root: &Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-        let open_dialog = OpenDialog::builder()
+        let mut simulations = FactoryVecDeque::builder()
+            .launch(adw::TabView::default())
+            .forward(sender.input_sender(), |output| match output {
+                SimulationOutput::ShowMessage(message) => Msg::ShowMessage(message),
+                SimulationOutput::ShowSidebarButton(visible) => Msg::ShowSidebarButton(visible),
+                SimulationOutput::ShowSidebar(visible) => Msg::ShowSidebar(visible),
+                SimulationOutput::OpenFile(index) => Msg::OpenRequest(index),
+            });
+
+        let preferences_menu =
+            Preferences::builder()
+                .launch(())
+                .forward(sender.input_sender(), |msg| match msg {
+                    UpdatePreferencesOutput::HistorySizeChanged(size) => Msg::ResizeHistory(size),
+                    UpdatePreferencesOutput::RadixChanged(radix) => Msg::ChangeRadix(radix),
+                    UpdatePreferencesOutput::ThemeChanged => Msg::ChangeTheme,
+                });
+
+        let file_chooser = OpenDialog::builder()
             .transient_for_native(root)
-            .launch(OpenDialogSettings::default())
+            .launch(relm4_components::open_dialog::OpenDialogSettings::default())
             .forward(sender.input_sender(), |response| match response {
                 OpenDialogResponse::Accept(path) => Msg::OpenResponse(path),
                 OpenDialogResponse::Cancel => Msg::Ignore,
             });
 
-        let info_dialog = InfoDialog::builder()
-            .transient_for(root)
-            .launch(())
-            .forward(sender.input_sender(), |_| Msg::Ignore);
-
-        let register_view: Controller<RegisterView> = RegisterView::builder()
-            .launch(())
-            .forward(sender.input_sender(), identity);
-
-        let memory_view: Controller<MemoryView> = MemoryView::builder()
-            .launch(())
-            .forward(sender.input_sender(), identity);
-
-        let tag_table = gtk::TextTagTable::new();
-        tag_table.add(
-            &gtk::TextTag::builder()
-                .name("line_highlight")
-                .paragraph_background("yellow")
-                .foreground("black")
-                .build(),
-        );
-
-        let model = App {
-            open_dialog,
-            info_dialog,
-            vm: VirtualMachine::new(),
-            asm_view_buffer: gtk::TextBuffer::new(Some(&tag_table)),
-            register_view,
-            memory_view,
-            app_to_thread: None,
-            vm_running: false,
+        simulations.guard().push_back(1);
+        let model = Self {
+            simulations,
+            preferences_menu,
+            file_chooser,
+            file_tab: None,
+            sidebar_button_visible: true,
+            sidebar_visible: false,
+            tab_count: 1,
         };
+
+        let tab_view = model.simulations.widget();
 
         let widgets = view_output!();
 
@@ -109,218 +149,61 @@ impl Component for App {
 
     fn update(&mut self, msg: Msg, sender: ComponentSender<Self>, root: &Self::Root) {
         match msg {
-            Msg::OpenRequest => self.open_dialog.emit(OpenDialogMsg::Open),
-            Msg::OpenResponse(path) => match std::fs::read_to_string(path) {
-                Ok(contents) => {
-                    self.asm_view_buffer.set_text(&contents);
-
-                    match tokenize(&contents) {
-                        Ok(tokens) => match parse_vm(tokens) {
-                            Ok(vm) => {
-                                self.vm = vm;
-                                update_registers_and_mem(self);
-                                highlight_line(
-                                    &mut self.asm_view_buffer,
-                                    self.vm.get_current_source_line(),
-                                );
-                            }
-                            Err(e) => {
-                                sender.input(Msg::ShowMessage(e));
-                                self.vm = VirtualMachine::new();
-                            }
-                        },
-                        Err(e) => {
-                            sender.input(Msg::ShowMessage(e));
-                            self.vm = VirtualMachine::new();
-                        }
-                    }
-                }
-                Err(e) => sender.input(Msg::ShowMessage(e.to_string())),
-            },
-            Msg::Step => {
-                self.vm.step();
-                update_registers_and_mem(self);
-                highlight_line(&mut self.asm_view_buffer, self.vm.get_current_source_line());
-                if self.vm.is_error() {
-                    sender.input(Msg::ShowMessage(self.vm.get_error()));
-                }
-            }
-            Msg::Run => {
-                let (app_tx, thread_rx) = mpsc::channel::<()>();
-                self.vm_running = true;
-
-                self.app_to_thread = Some(app_tx);
-                let mut thread_vm = self.vm.clone();
-                sender.oneshot_command(async move {
-                    while !thread_vm.is_error() {
-                        thread_vm.step();
-                        if thread_rx.try_recv().is_ok() {
-                            break;
-                        }
-                    }
-                    CommandMsg::ThreadFinished(thread_vm)
-                });
-            }
-            Msg::Break => match &self.app_to_thread {
-                Some(tx) => if tx.send(()).is_ok() {},
-                None => {}
-            },
             Msg::ShowMessage(message) => {
-                self.info_dialog = InfoDialog::builder()
+                let dialog = adw::MessageDialog::builder()
                     .transient_for(root)
-                    .launch(())
-                    .forward(sender.input_sender(), |_| Msg::Ignore);
-
-                self.info_dialog.emit(DialogMsg::Show(message));
+                    .body(message)
+                    .build();
+                dialog.add_response("Ok", "Ok");
+                dialog.set_default_response(Some("Ok"));
+                dialog.connect_response(
+                    None,
+                    glib::clone!(@strong sender=>move|dialog,_|{dialog.close();}),
+                );
+                dialog.present();
             }
-            Msg::ResetSimulation => {
-                let contents = self
-                    .asm_view_buffer
-                    .text(
-                        &self.asm_view_buffer.start_iter(),
-                        &self.asm_view_buffer.end_iter(),
-                        true,
-                    )
-                    .to_string();
-
-                match tokenize(&contents) {
-                    Ok(tokens) => match parse_vm(tokens) {
-                        Ok(vm) => {
-                            self.vm = vm;
-                            update_registers_and_mem(self);
-                            highlight_line(
-                                &mut self.asm_view_buffer,
-                                self.vm.get_current_source_line(),
-                            );
-                        }
-                        Err(e) => sender.input(Msg::ShowMessage(e)),
-                    },
-                    Err(e) => sender.input(Msg::ShowMessage(e)),
+            Msg::ShowSidebarButton(visible) => self.sidebar_button_visible = visible,
+            Msg::ShowSidebar(visible) => {
+                self.sidebar_visible = visible;
+                self.simulations
+                    .broadcast(SimulationMsg::ShowSidebar(visible));
+            }
+            Msg::ShowPreferences => self.preferences_menu.widget().present(),
+            Msg::ChangeRadix(radix) => self
+                .simulations
+                .broadcast(SimulationMsg::ChangeRadix(radix)),
+            Msg::ChangeTheme => self.simulations.broadcast(SimulationMsg::UpdateViews),
+            Msg::ResizeHistory(size) => self
+                .simulations
+                .broadcast(SimulationMsg::ResizeHistory(size)),
+            Msg::NewTab => {
+                self.tab_count += 1;
+                self.simulations.guard().push_back(self.tab_count);
+                sender
+                    .input_sender()
+                    .emit(Msg::ChangeRadix(self.preferences_menu.model().radix));
+                sender.input_sender().emit(Msg::ResizeHistory(
+                    self.preferences_menu.model().history_size,
+                ));
+            }
+            Msg::OpenRequest(index) => {
+                self.file_tab = Some(index);
+                self.file_chooser.emit(OpenDialogMsg::Open);
+            }
+            Msg::OpenResponse(path) => {
+                let idx = self.file_tab.clone();
+                if let Some(index) = idx {
+                    self.simulations
+                        .send(index.current_index(), SimulationMsg::OpenResponse(path));
                 }
             }
             Msg::Ignore => {}
         }
     }
-
-    fn update_cmd(
-        &mut self,
-        message: Self::CommandOutput,
-        sender: ComponentSender<Self>,
-        _: &Self::Root,
-    ) {
-        match message {
-            CommandMsg::ThreadFinished(new_vm) => {
-                self.vm_running = false;
-                self.vm = new_vm;
-                update_registers_and_mem(self);
-                highlight_line(&mut self.asm_view_buffer, self.vm.get_current_source_line());
-                if self.vm.is_error() {
-                    sender.input(Msg::ShowMessage(self.vm.get_error()));
-                }
-            }
-        }
-    }
-
-    view! {
-        root = gtk::Window {
-            set_title: Some("MIPS Simulator"),
-            set_default_size: (800, 600),
-
-            gtk::Box {
-                set_orientation: gtk::Orientation::Vertical,
-                set_spacing: 5,
-                set_margin_all: 5,
-
-                gtk::Box {
-                    set_orientation: gtk::Orientation::Horizontal,
-                    set_spacing: 5,
-                    set_margin_all: 5,
-
-                    gtk::ScrolledWindow {
-                        set_min_content_height: 400,
-
-                        #[wrap(Some)]
-                        set_child = &gtk::TextView {
-                            set_hexpand: true,
-                            set_vexpand: true,
-                            set_margin_all: 5,
-                            set_editable: false,
-                            set_monospace: true,
-                            set_cursor_visible: false,
-                            set_buffer: Some(&model.asm_view_buffer),
-                        },
-                    },
-
-                    append: model.register_view.widget(),
-                    append: model.memory_view.widget(),
-                },
-
-                gtk::Box {
-                    set_orientation: gtk::Orientation::Horizontal,
-                    set_spacing: 5,
-                    set_margin_all: 5,
-                    set_hexpand: true,
-
-                    gtk::Button {
-                        set_label: "Load File",
-                        #[watch]
-                        set_sensitive: !model.vm_running,
-                        connect_clicked => Msg::OpenRequest,
-                    },
-
-                    gtk::Button {
-                        set_label: "Step",
-                        #[watch]
-                        set_sensitive: !model.vm_running,
-                        connect_clicked => Msg::Step,
-                    },
-
-                    gtk::Button {
-                        set_label: "Run",
-                        #[watch]
-                        set_sensitive: !model.vm_running,
-                        connect_clicked => Msg::Run,
-                    },
-
-                    gtk::Button {
-                        set_label: "Break",
-                        #[watch]
-                        set_sensitive: model.vm_running,
-                        connect_clicked => Msg::Break,
-                    },
-
-                    gtk::Button {
-                        set_label: "Reset",
-                        #[watch]
-                        set_sensitive: !model.vm_running,
-                        connect_clicked => Msg::ResetSimulation,
-                    },
-
-                    gtk::Label {
-                        #[watch]
-                        set_label: &format!("Current Line: {}", model.vm.get_current_source_line()),
-                        set_margin_all: 5,
-                    },
-                }
-            }
-        }
-    }
-}
-
-fn update_registers_and_mem(app: &mut App) {
-    app.register_view.emit(RegMsg::UpdateRegisters(
-        (0..35)
-            .map(|idx| app.vm.get_register(FromPrimitive::from_i32(idx).unwrap()))
-            .collect(),
-    ));
-    app.memory_view.emit(MemoryMsg::UpdateMemory(
-        (0..app.vm.get_memory_size())
-            .map(|idx| app.vm.get_memory_byte(idx).unwrap())
-            .collect(),
-    ));
 }
 
 fn main() {
     let app = RelmApp::new("org.simmips.gui");
+    relm4_icons::initialize_icons();
     app.run::<App>(());
 }

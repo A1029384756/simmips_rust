@@ -1,4 +1,8 @@
+use std::fmt::Debug;
+
 use num_derive::FromPrimitive;
+
+use super::{alu::AluOperation, control_unit::ControlUnitOutput};
 
 #[derive(Debug, Clone, Copy, FromPrimitive)]
 pub enum RegisterKind {
@@ -34,18 +38,32 @@ pub enum RegisterKind {
     Reg29 = 29,
     Reg30 = 30,
     Reg31 = 31,
-    RegHi = 32,
-    RegLo = 33,
-    RegPC = 34,
+    RegPC = 32,
 }
 
-pub trait VirtualMachineInterface {
+pub trait CPUInterface: Send {
     fn get_memory_size(&self) -> u32;
     fn get_instruction_size(&self) -> u32;
-    fn get_memory_byte(&self, address: u32) -> Option<u8>;
+
     fn get_register(&self, reg: RegisterKind) -> u32;
-    fn get_current_source_line(&self) -> u32;
-    fn is_error(&self) -> bool;
-    fn get_error(&self) -> String;
+    fn get_memory_byte(&self, address: u32) -> Option<u8>;
+
+    fn get_control_signals(&self) -> ControlUnitOutput;
+    fn get_alu_signals(&self) -> AluOperation;
+
+    fn get_error(&self) -> Option<String>;
+
     fn step(&mut self);
+}
+
+impl Debug for dyn CPUInterface {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "CPU with memory size: {}, instruction size: {}, and error: {:?}",
+            self.get_memory_size(),
+            self.get_instruction_size(),
+            self.get_error()
+        )
+    }
 }

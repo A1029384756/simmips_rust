@@ -3,7 +3,7 @@ use {
     super::{
         lexer::tokenize,
         parser::parse_vm,
-        virtual_machine_interface::{RegisterKind, VirtualMachineInterface},
+        virtual_machine_interface::{RegisterKind, CPUInterface},
     },
     std::{fs::read_to_string, path::PathBuf},
 };

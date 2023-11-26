@@ -1,12 +1,15 @@
+use crate::ui_components::column_views::Radices;
 use relm4::{gtk::traits::WidgetExt, prelude::*};
 use relm4::{
     typed_view::column::{LabelColumn, TypedColumnView},
     ComponentParts, ComponentSender, SimpleComponent,
 };
 
+use super::RadixedValue;
+
 pub struct MemoryRow {
     addr: u32,
-    value: u8,
+    value: RadixedValue<u8>,
 }
 
 pub struct AddressColumn;
@@ -34,7 +37,7 @@ pub struct MemoryColumn;
 impl LabelColumn for MemoryColumn {
     type Item = MemoryRow;
 
-    type Value = u8;
+    type Value = RadixedValue<u8>;
 
     const COLUMN_NAME: &'static str = "Memory Contents";
 
@@ -45,7 +48,11 @@ impl LabelColumn for MemoryColumn {
     }
 
     fn format_cell_value(value: &Self::Value) -> String {
-        format!("0x{:02x}", value)
+        match value.radix {
+            Radices::Binary => format!("0b{:032b}", value.value),
+            Radices::Hex => format!("0x{:08x}", value.value),
+            Radices::Decimal => format!("{:010}", value.value),
+        }
     }
 }
 
@@ -56,6 +63,7 @@ pub struct MemoryView {
 #[derive(Debug)]
 pub enum MemoryMsg {
     UpdateMemory(Vec<u8>),
+    UpdateRadix(Radices),
 }
 
 #[relm4::component(pub)]
@@ -63,6 +71,16 @@ impl SimpleComponent for MemoryView {
     type Input = MemoryMsg;
     type Output = crate::Msg;
     type Init = ();
+
+    view! {
+        memory_view = gtk::ScrolledWindow {
+            set_hexpand: true,
+            set_vexpand: true,
+            set_margin_all: 5,
+            #[local_ref]
+            my_view -> gtk::ColumnView {}
+        }
+    }
 
     fn init(
         _: Self::Init,
@@ -80,7 +98,10 @@ impl SimpleComponent for MemoryView {
         (0..1024).for_each(|idx| {
             view_wrapper.append(MemoryRow {
                 addr: idx,
-                value: 0,
+                value: RadixedValue {
+                    radix: Radices::Hex,
+                    value: 0,
+                },
             });
         });
 
@@ -96,24 +117,37 @@ impl SimpleComponent for MemoryView {
     fn update(&mut self, msg: Self::Input, _sender: ComponentSender<Self>) {
         match msg {
             MemoryMsg::UpdateMemory(new_mem) => {
+                let v = self.view_wrapper.get(0);
+
+                if let Some(radix) = v.iter().next() {
+                    let radix = radix.borrow().value.radix;
+
+                    self.view_wrapper.clear();
+                    new_mem.into_iter().enumerate().for_each(|(idx, val)| {
+                        self.view_wrapper.append(MemoryRow {
+                            addr: idx as u32,
+                            value: RadixedValue { radix, value: val },
+                        });
+                    })
+                }
+            }
+            MemoryMsg::UpdateRadix(radix) => {
+                let mut new_list: Vec<u8> = Vec::new();
+
+                (0..self.view_wrapper.len()).for_each(|v| {
+                    self.view_wrapper.get(v).iter().for_each(|rv| {
+                        new_list.push(rv.borrow().value.value);
+                    });
+                });
+
                 self.view_wrapper.clear();
-                new_mem.into_iter().enumerate().for_each(|(idx, val)| {
+                new_list.iter().enumerate().for_each(|(idx, val)| {
                     self.view_wrapper.append(MemoryRow {
                         addr: idx as u32,
-                        value: val,
+                        value: RadixedValue { radix, value: *val },
                     });
-                })
+                });
             }
-        }
-    }
-
-    view! {
-        memory_view = gtk::ScrolledWindow {
-            set_hexpand: true,
-            set_vexpand: true,
-            set_margin_all: 5,
-            #[local_ref]
-            my_view -> gtk::ColumnView {}
         }
     }
 }

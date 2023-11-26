@@ -1,19 +1,47 @@
 [package]
 name = "simmips_rust"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 [dependencies]
 num = "0.4.0"
 num-derive = "0.4.0"
 num-traits = "0.2.15"
-relm4 = { version = "0.7.0-beta.1", features = ["libadwaita", "gnome_43"] }
-relm4-components = "0.7.0-beta.1"
+relm4-components = "0.7.0-beta.2"
+libadwaita = { version = "0.5.3", features = ["v1_3"] }
+anyhow = "1.0.75"
+gdk-pixbuf = "0.18.3"
+rayon = "1.8.0"
+sourceview5 = "0.7.1"
+
+[dependencies.relm4]
+version = "0.7.0-beta.2"
+features = ["libadwaita", "gnome_44"]
+
+[dependencies.relm4-icons]
+version = "0.7.0-alpha.2"
+features = [
+  "table",
+  "processor",
+  "dock-left",
+  "execute-from",
+  "pause",
+  "refresh",
+  "text",
+  "menu",
+  "dark-mode",
+  "settings",
+  "plus",
+  "emergency-number",
+  "arrow-redo-filled",
+  "arrow-undo-filled",
+  "arrow-step-in-right-filled",
+]
+
+[dependencies.mips_assembler]
+git = "https://github.com/A1029384756/mips_assembler"
+branch = "master"
 
 [[bin]]
 name = "simmips_gui"
 path = "src/main.rs"
-
-[[bin]]
-name = "simmips_tui"
-path = "src/tui.rs"
