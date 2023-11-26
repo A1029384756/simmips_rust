@@ -26,4 +26,4 @@
 8. Run `cargo build`
 
 ### TODO
-Add command for gtksourceview5-devel install to windows instructions
+Updated windows instructions
