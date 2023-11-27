@@ -1,6 +1,6 @@
 	# a test for constants
 	.data
-	LENGTH = 1024
-arr:	.space LENGTH
+arr:	.space 1024
 	
 	.text
+main:

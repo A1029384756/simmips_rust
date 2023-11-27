@@ -758,7 +758,7 @@ dependencies = [
 [[package]]
 name = "mips_assembler"
 version = "0.1.0"
-source = "git+https://github.com/A1029384756/mips_assembler?branch=master#c4bc93bfbf7774e39b39e752c4beef19e0642fdf"
+source = "git+https://github.com/A1029384756/mips_assembler?branch=master#02dcaa9b17ba73ff17050d90892e3aea48f28d1b"
 dependencies = [
  "nom",
  "nom-supreme",
