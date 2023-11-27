@@ -49,8 +49,8 @@ impl LabelColumn for MemoryColumn {
 
     fn format_cell_value(value: &Self::Value) -> String {
         match value.radix {
-            Radices::Binary => format!("0b{:032b}", value.value),
-            Radices::Hex => format!("0x{:08x}", value.value),
+            Radices::Binary => format!("0b{:08b}", value.value),
+            Radices::Hex => format!("0x{:02x}", value.value),
             Radices::Decimal => format!("{:010}", value.value),
         }
     }
