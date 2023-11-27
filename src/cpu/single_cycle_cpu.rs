@@ -18,8 +18,8 @@ pub struct SingleCycleCPU {
     registers: Registers,
     pc: u32,
 
-    instruction_memory: InstructionMemory,
-    data_memory: DataMemory,
+    pub instruction_memory: InstructionMemory,
+    pub data_memory: DataMemory,
     control_signals: ControlUnitOutput,
     alu_control_signals: AluOperation,
 }

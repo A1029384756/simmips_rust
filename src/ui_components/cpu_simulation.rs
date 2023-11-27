@@ -8,7 +8,7 @@ use relm4::prelude::*;
 use relm4_icons::icon_name;
 
 use super::{
-    asm_view::{AsmView, AsmViewMsg},
+    asm_view::{AsmView, AsmViewMsg, AsmViewOutput},
     column_views::Radices,
     component_view::ComponentView,
     history::History,
@@ -22,7 +22,9 @@ use crate::cpu::{
 
 #[derive(Debug, Clone)]
 pub enum SimulationMsg {
-    OpenResponse(PathBuf),
+    FileLoaded(PathBuf),
+    SaveFile(String),
+    FileSaved,
     Ignore,
     Step,
     Run,
@@ -48,6 +50,7 @@ pub enum SimulationOutput {
     ShowSidebarButton(bool),
     ShowSidebar(bool),
     OpenFile(DynamicIndex),
+    SaveFile(DynamicIndex, String, String),
 }
 
 pub struct CPUSimulation {
@@ -56,10 +59,12 @@ pub struct CPUSimulation {
     asm_view: Controller<AsmView>,
     history: History<SingleCycleCPU>,
     curr_asm: String,
+    curr_file: String,
     app_to_thread: Option<Sender<()>>,
     cpu_running: bool,
     sidebar_visible: bool,
     idx: usize,
+    dynamic_index: DynamicIndex,
 }
 
 #[relm4::factory(pub)]
@@ -174,7 +179,7 @@ impl FactoryComponent for CPUSimulation {
         }
     }
 
-    fn init_model(count: Self::Init, _idx: &DynamicIndex, sender: FactorySender<Self>) -> Self {
+    fn init_model(count: Self::Init, idx: &DynamicIndex, sender: FactorySender<Self>) -> Self {
         let simple_view = SimpleView::builder()
             .launch(())
             .forward(sender.input_sender(), |_| SimulationMsg::Ignore);
@@ -183,9 +188,12 @@ impl FactoryComponent for CPUSimulation {
             .launch(())
             .forward(sender.input_sender(), |_| SimulationMsg::Ignore);
 
-        let asm_view = AsmView::builder()
-            .launch(())
-            .forward(sender.input_sender(), |_| SimulationMsg::Ignore);
+        let asm_view =
+            AsmView::builder()
+                .launch(())
+                .forward(sender.input_sender(), |msg| match msg {
+                    AsmViewOutput::SaveFile(file_string) => SimulationMsg::SaveFile(file_string),
+                });
 
         Self {
             simple_view,
@@ -193,31 +201,64 @@ impl FactoryComponent for CPUSimulation {
             asm_view,
             history: History::new(10),
             curr_asm: String::default(),
+            curr_file: String::default(),
             app_to_thread: None,
             cpu_running: false,
             sidebar_visible: false,
             idx: count,
+            dynamic_index: idx.clone(),
         }
     }
 
     fn update(&mut self, msg: SimulationMsg, sender: FactorySender<Self>) {
         match msg {
-            SimulationMsg::OpenResponse(path) => match std::fs::read_to_string(path) {
-                Ok(contents) => {
-                    match parse(&contents) {
-                        Ok((inst_mem, data_mem)) => {
-                            self.history
-                                .reset(SingleCycleCPU::new_from_memory(inst_mem.clone(), data_mem));
-                            self.asm_view
-                                .emit(AsmViewMsg::UpdateData(contents.clone(), inst_mem));
-                            self.curr_asm = contents;
-                            sender.input(SimulationMsg::UpdateViews);
-                        }
-                        Err(err) => sender.input(SimulationMsg::ShowMessage(err)),
-                    };
+            SimulationMsg::FileLoaded(path) => {
+                if let Some(name) = path.file_name() {
+                    self.curr_file = name.to_str().unwrap().to_string();
                 }
-                Err(e) => sender.input(SimulationMsg::ShowMessage(e.to_string())),
-            },
+                match std::fs::read_to_string(path) {
+                    Ok(contents) => {
+                        match parse(&contents) {
+                            Ok((inst_mem, data_mem)) => {
+                                self.history.reset(SingleCycleCPU::new_from_memory(
+                                    inst_mem.clone(),
+                                    data_mem,
+                                ));
+                                self.asm_view
+                                    .emit(AsmViewMsg::LoadFile(contents.clone(), inst_mem));
+                                self.curr_asm = contents;
+                                sender.input(SimulationMsg::UpdateViews);
+                            }
+                            Err(err) => sender.input(SimulationMsg::ShowMessage(err)),
+                        };
+                    }
+                    Err(e) => sender.input(SimulationMsg::ShowMessage(e.to_string())),
+                }
+            }
+            SimulationMsg::SaveFile(contents) => {
+                match parse(&contents) {
+                    Ok((inst_mem, data_mem)) => {
+                        self.history
+                            .reset(SingleCycleCPU::new_from_memory(inst_mem.clone(), data_mem));
+                        self.curr_asm = contents.clone();
+                        sender.input(SimulationMsg::UpdateViews);
+                        sender
+                            .output(SimulationOutput::SaveFile(
+                                self.dynamic_index.clone(),
+                                self.curr_file.clone(),
+                                contents,
+                            ))
+                            .unwrap();
+                    }
+                    Err(err) => sender.input(SimulationMsg::ShowMessage(err)),
+                };
+            }
+            SimulationMsg::FileSaved => {
+                self.asm_view.emit(AsmViewMsg::LoadFile(
+                    self.curr_asm.clone(),
+                    self.history.get_curr().instruction_memory.clone(),
+                ));
+            }
             SimulationMsg::Step => {
                 let curr = self.history.get_curr().clone();
                 self.history.append(curr);
@@ -257,7 +298,7 @@ impl FactoryComponent for CPUSimulation {
                         self.history
                             .reset(SingleCycleCPU::new_from_memory(inst_mem.clone(), data_mem));
                         self.asm_view
-                            .emit(AsmViewMsg::UpdateData(self.curr_asm.clone(), inst_mem));
+                            .emit(AsmViewMsg::LoadFile(self.curr_asm.clone(), inst_mem));
                         sender.input(SimulationMsg::UpdateViews);
                     }
                     Err(err) => sender.input(SimulationMsg::ShowMessage(err)),

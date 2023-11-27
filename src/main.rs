@@ -7,7 +7,12 @@ use adw::prelude::*;
 use gtk::glib;
 use relm4::{factory::FactoryVecDeque, prelude::*};
 
-use relm4_components::open_dialog::{OpenDialog, OpenDialogMsg, OpenDialogResponse};
+use relm4_components::open_dialog::{
+    OpenDialog, OpenDialogMsg, OpenDialogResponse, OpenDialogSettings,
+};
+use relm4_components::save_dialog::{
+    SaveDialog, SaveDialogMsg, SaveDialogResponse, SaveDialogSettings,
+};
 use relm4_icons::icon_name;
 use ui_components::{
     column_views::Radices,
@@ -20,10 +25,12 @@ struct App {
     simulations: FactoryVecDeque<CPUSimulation>,
     preferences_menu: Controller<Preferences>,
     file_chooser: Controller<OpenDialog>,
+    file_saver: Controller<SaveDialog>,
     file_tab: Option<DynamicIndex>,
     sidebar_button_visible: bool,
     sidebar_visible: bool,
     tab_count: usize,
+    save_contents: String,
 }
 
 #[derive(Debug)]
@@ -31,16 +38,15 @@ pub enum Msg {
     ShowMessage(String),
     ShowSidebarButton(bool),
     ShowSidebar(bool),
-
     ShowPreferences,
     ResizeHistory(usize),
     ChangeRadix(Radices),
     ChangeTheme,
-
     NewTab,
     OpenRequest(DynamicIndex),
     OpenResponse(PathBuf),
-
+    SaveRequest(DynamicIndex, String, String),
+    SaveResponse(PathBuf),
     Ignore,
 }
 
@@ -110,6 +116,9 @@ impl Component for App {
                 SimulationOutput::ShowSidebarButton(visible) => Msg::ShowSidebarButton(visible),
                 SimulationOutput::ShowSidebar(visible) => Msg::ShowSidebar(visible),
                 SimulationOutput::OpenFile(index) => Msg::OpenRequest(index),
+                SimulationOutput::SaveFile(index, name, contents) => {
+                    Msg::SaveRequest(index, name, contents)
+                }
             });
 
         let preferences_menu =
@@ -123,10 +132,18 @@ impl Component for App {
 
         let file_chooser = OpenDialog::builder()
             .transient_for_native(root)
-            .launch(relm4_components::open_dialog::OpenDialogSettings::default())
+            .launch(OpenDialogSettings::default())
             .forward(sender.input_sender(), |response| match response {
                 OpenDialogResponse::Accept(path) => Msg::OpenResponse(path),
                 OpenDialogResponse::Cancel => Msg::Ignore,
+            });
+
+        let file_saver = SaveDialog::builder()
+            .transient_for_native(root)
+            .launch(SaveDialogSettings::default())
+            .forward(sender.input_sender(), |response| match response {
+                SaveDialogResponse::Accept(path) => Msg::SaveResponse(path),
+                SaveDialogResponse::Cancel => Msg::Ignore,
             });
 
         simulations.guard().push_back(1);
@@ -134,10 +151,12 @@ impl Component for App {
             simulations,
             preferences_menu,
             file_chooser,
+            file_saver,
             file_tab: None,
             sidebar_button_visible: true,
             sidebar_visible: false,
             tab_count: 1,
+            save_contents: String::new(),
         };
 
         let tab_view = model.simulations.widget();
@@ -191,12 +210,25 @@ impl Component for App {
                 self.file_chooser.emit(OpenDialogMsg::Open);
             }
             Msg::OpenResponse(path) => {
-                let idx = self.file_tab.clone();
-                if let Some(index) = idx {
+                if let Some(index) = self.file_tab.clone() {
                     self.simulations
-                        .send(index.current_index(), SimulationMsg::OpenResponse(path));
+                        .send(index.current_index(), SimulationMsg::FileLoaded(path));
                 }
             }
+            Msg::SaveRequest(index, name, contents) => {
+                self.file_tab = Some(index);
+                self.save_contents = contents;
+                self.file_saver.emit(SaveDialogMsg::SaveAs(name));
+            }
+            Msg::SaveResponse(path) => match std::fs::write(&path, &self.save_contents) {
+                Ok(_) => {
+                    if let Some(index) = self.file_tab.clone() {
+                        self.simulations
+                            .send(index.current_index(), SimulationMsg::FileSaved);
+                    }
+                }
+                Err(e) => sender.input(Msg::ShowMessage(e.to_string())),
+            },
             Msg::Ignore => {}
         }
     }

@@ -1,5 +1,7 @@
 use adw::prelude::*;
+use gtk::glib::clone;
 use relm4::prelude::*;
+use relm4_icons::icon_name;
 use sourceview5::prelude::*;
 
 #[derive(Debug)]
@@ -7,36 +9,56 @@ pub struct AsmView {
     asm_buffer: sourceview5::Buffer,
     assembled_buffer: sourceview5::Buffer,
     curr_line: u32,
+    dirty: bool,
 }
 
 #[derive(Debug)]
 pub enum AsmViewMsg {
-    UpdateData(String, Vec<u32>),
+    LoadFile(String, Vec<u32>),
     SetLine(u32),
     UpdateTheme,
+    SaveFile,
+    SetDirty(bool),
+}
+
+#[derive(Debug)]
+pub enum AsmViewOutput {
+    SaveFile(String),
 }
 
 #[relm4::component(pub)]
 impl SimpleComponent for AsmView {
     type Init = ();
     type Input = AsmViewMsg;
-    type Output = ();
+    type Output = AsmViewOutput;
 
     view! {
         #[root]
         gtk::Box {
             inline_css: "background: @window_bg_color",
             set_orientation: gtk::Orientation::Vertical,
-            gtk::ScrolledWindow {
-                set_width_request: 500,
-                sourceview5::View {
-                    set_show_line_numbers: true,
-                    set_margin_all: 5,
-                    set_vexpand: true,
-                    set_editable: false,
-                    set_monospace: true,
-                    set_cursor_visible: false,
-                    set_buffer: Some(&model.asm_buffer),
+            gtk::Overlay {
+                gtk::ScrolledWindow {
+                    set_width_request: 500,
+                    sourceview5::View {
+                        set_show_line_numbers: true,
+                        set_margin_all: 5,
+                        set_vexpand: true,
+                        set_monospace: true,
+                        set_buffer: Some(&model.asm_buffer),
+                    },
+                },
+                add_overlay = &gtk::Box {
+                    set_halign: gtk::Align::End,
+                    set_valign: gtk::Align::End,
+                    set_margin_all: 10,
+                    gtk::Button {
+                        set_icon_name: icon_name::FLOPPY,
+                        set_tooltip_text: Some("Save"),
+                        #[watch]
+                        set_visible: model.dirty,
+                        connect_clicked => AsmViewMsg::SaveFile,
+                    },
                 },
             },
             gtk::ScrolledWindow {
@@ -57,7 +79,7 @@ impl SimpleComponent for AsmView {
     fn init(
         _init: Self::Init,
         root: &Self::Root,
-        _sender: ComponentSender<Self>,
+        sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let tag_table = gtk::TextTagTable::new();
         tag_table.add(
@@ -80,10 +102,15 @@ impl SimpleComponent for AsmView {
             asm_buffer.set_language(Some(language));
         }
 
+        asm_buffer.connect_modified_changed(clone!(@strong sender => move |val| {
+            sender.input(AsmViewMsg::SetDirty(val.is_modified()));
+        }));
+
         let mut model = Self {
             asm_buffer,
             assembled_buffer,
             curr_line: 0,
+            dirty: false,
         };
 
         model.set_theme_dark(adw::StyleManager::default().is_dark());
@@ -92,12 +119,11 @@ impl SimpleComponent for AsmView {
         ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, message: Self::Input, _sender: ComponentSender<Self>) {
+    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
         match message {
-            AsmViewMsg::UpdateData(asm, binary) => {
-                self.set_theme_dark(adw::StyleManager::default().is_dark());
-
-                self.asm_buffer.set_text(asm.trim_end());
+            AsmViewMsg::LoadFile(asm, binary) => {
+                self.asm_buffer.set_text(&asm);
+                self.asm_buffer.set_modified(false);
                 if let Some(bin) = binary
                     .iter()
                     .map(|e| format!("{e:08x}\n"))
@@ -111,6 +137,20 @@ impl SimpleComponent for AsmView {
                 self.highlight_assembly();
             }
             AsmViewMsg::UpdateTheme => self.set_theme_dark(adw::StyleManager::default().is_dark()),
+            AsmViewMsg::SetDirty(dirty) => {
+                self.dirty = dirty;
+            }
+            AsmViewMsg::SaveFile => sender
+                .output(AsmViewOutput::SaveFile(
+                    self.asm_buffer
+                        .text(
+                            &self.asm_buffer.start_iter(),
+                            &self.asm_buffer.end_iter(),
+                            true,
+                        )
+                        .to_string(),
+                ))
+                .unwrap(),
         }
     }
 }
