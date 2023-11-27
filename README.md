@@ -20,6 +20,7 @@
 7. Select `Path` -> Click on `Edit` -> Add the following three entries:
     ```
     C:\msys64\mingw64\include
+    C:\msys64\mingw64\share
     C:\msys64\mingw64\bin
     C:\msys64\mingw64\lib
     ```
