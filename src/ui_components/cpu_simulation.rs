@@ -269,6 +269,7 @@ impl FactoryComponent for CPUSimulation {
                 sender.input(SimulationMsg::UpdateViews);
             }
             SimulationMsg::Run => {
+                self.asm_view.emit(AsmViewMsg::SetCanSave(false));
                 let (app_tx, thread_rx) = mpsc::channel::<()>();
                 self.cpu_running = true;
 
@@ -286,7 +287,11 @@ impl FactoryComponent for CPUSimulation {
                 });
             }
             SimulationMsg::Break => match &self.app_to_thread {
-                Some(tx) => if tx.send(()).is_ok() {},
+                Some(tx) => {
+                    if tx.send(()).is_ok() {
+                        self.asm_view.emit(AsmViewMsg::SetCanSave(true));
+                    }
+                }
                 None => {}
             },
             SimulationMsg::ShowMessage(message) => sender

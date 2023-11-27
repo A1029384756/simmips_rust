@@ -10,6 +10,7 @@ pub struct AsmView {
     assembled_buffer: sourceview5::Buffer,
     curr_line: u32,
     dirty: bool,
+    can_save: bool,
 }
 
 #[derive(Debug)]
@@ -19,6 +20,7 @@ pub enum AsmViewMsg {
     UpdateTheme,
     SaveFile,
     SetDirty(bool),
+    SetCanSave(bool),
 }
 
 #[derive(Debug)]
@@ -57,6 +59,8 @@ impl SimpleComponent for AsmView {
                         set_tooltip_text: Some("Save"),
                         #[watch]
                         set_visible: model.dirty,
+                        #[watch]
+                        set_sensitive: model.can_save,
                         connect_clicked => AsmViewMsg::SaveFile,
                     },
                 },
@@ -111,6 +115,7 @@ impl SimpleComponent for AsmView {
             assembled_buffer,
             curr_line: 0,
             dirty: false,
+            can_save: true,
         };
 
         model.set_theme_dark(adw::StyleManager::default().is_dark());
@@ -137,9 +142,8 @@ impl SimpleComponent for AsmView {
                 self.highlight_assembly();
             }
             AsmViewMsg::UpdateTheme => self.set_theme_dark(adw::StyleManager::default().is_dark()),
-            AsmViewMsg::SetDirty(dirty) => {
-                self.dirty = dirty;
-            }
+            AsmViewMsg::SetDirty(dirty) => self.dirty = dirty,
+            AsmViewMsg::SetCanSave(can_save) => self.can_save= can_save,
             AsmViewMsg::SaveFile => sender
                 .output(AsmViewOutput::SaveFile(
                     self.asm_buffer
