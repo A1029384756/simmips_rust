@@ -143,7 +143,7 @@ impl SimpleComponent for AsmView {
             }
             AsmViewMsg::UpdateTheme => self.set_theme_dark(adw::StyleManager::default().is_dark()),
             AsmViewMsg::SetDirty(dirty) => self.dirty = dirty,
-            AsmViewMsg::SetCanSave(can_save) => self.can_save= can_save,
+            AsmViewMsg::SetCanSave(can_save) => self.can_save = can_save,
             AsmViewMsg::SaveFile => sender
                 .output(AsmViewOutput::SaveFile(
                     self.asm_buffer
