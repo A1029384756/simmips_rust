@@ -12,7 +12,7 @@ pub mod simple_view;
 
 #[derive(Debug)]
 pub enum CPUViewMessage {
-    Update(SingleCycleCPU),
+    Update(Box<SingleCycleCPU>),
     ChangeRadix(Radices),
     Resize((i32, i32)),
     None,

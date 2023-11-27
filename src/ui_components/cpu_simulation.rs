@@ -310,10 +310,12 @@ impl FactoryComponent for CPUSimulation {
                 };
             }
             SimulationMsg::UpdateViews => {
-                self.simple_view
-                    .emit(CPUViewMessage::Update(self.history.get_curr().clone()));
-                self.component_view
-                    .emit(CPUViewMessage::Update(self.history.get_curr().clone()));
+                self.simple_view.emit(CPUViewMessage::Update(Box::new(
+                    self.history.get_curr().clone(),
+                )));
+                self.component_view.emit(CPUViewMessage::Update(Box::new(
+                    self.history.get_curr().clone(),
+                )));
                 self.asm_view.emit(AsmViewMsg::SetLine(
                     self.history.get_curr().get_register(RegisterKind::RegPC),
                 ));

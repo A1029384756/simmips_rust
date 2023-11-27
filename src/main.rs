@@ -125,9 +125,9 @@ impl Component for App {
             Preferences::builder()
                 .launch(())
                 .forward(sender.input_sender(), |msg| match msg {
-                    UpdatePreferencesOutput::HistorySizeChanged(size) => Msg::ResizeHistory(size),
-                    UpdatePreferencesOutput::RadixChanged(radix) => Msg::ChangeRadix(radix),
-                    UpdatePreferencesOutput::ThemeChanged => Msg::ChangeTheme,
+                    UpdatePreferencesOutput::HistorySize(size) => Msg::ResizeHistory(size),
+                    UpdatePreferencesOutput::Radix(radix) => Msg::ChangeRadix(radix),
+                    UpdatePreferencesOutput::Theme => Msg::ChangeTheme,
                 });
 
         let file_chooser = OpenDialog::builder()
@@ -220,7 +220,7 @@ impl Component for App {
                 self.save_contents = contents;
                 self.file_saver.emit(SaveDialogMsg::SaveAs(name));
             }
-            Msg::SaveResponse(path) => match std::fs::write(&path, &self.save_contents) {
+            Msg::SaveResponse(path) => match std::fs::write(path, &self.save_contents) {
                 Ok(_) => {
                     if let Some(index) = self.file_tab.clone() {
                         self.simulations
