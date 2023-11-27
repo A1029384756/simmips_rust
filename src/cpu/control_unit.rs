@@ -166,7 +166,7 @@ pub fn control_unit(opcode: u32, function: u32) -> ControlUnitOutput {
             pc_src: PCSrc::PC,
             alu_op: AluOp::Add,
         },
-        // SW
+        // SH
         0x29 => ControlUnitOutput {
             reg_dst: RegDst::RT,
             alu_src: true,

@@ -18,8 +18,8 @@ pub struct SingleCycleCPU {
     registers: Registers,
     pc: u32,
 
-    instruction_memory: InstructionMemory,
-    data_memory: DataMemory,
+    pub instruction_memory: InstructionMemory,
+    pub data_memory: DataMemory,
     control_signals: ControlUnitOutput,
     alu_control_signals: AluOperation,
 }
@@ -128,7 +128,7 @@ impl CPUInterface for SingleCycleCPU {
             );
             if matches!(
                 self.data_memory
-                    .store(rt, alu_result, self.control_signals.mem_write),
+                    .store(data_2, alu_result, self.control_signals.mem_write),
                 Err(())
             ) {
                 self.error_message = Some(format!("Invalid memory write address: {}", rt));

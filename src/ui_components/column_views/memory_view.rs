@@ -49,8 +49,8 @@ impl LabelColumn for MemoryColumn {
 
     fn format_cell_value(value: &Self::Value) -> String {
         match value.radix {
-            Radices::Binary => format!("0b{:032b}", value.value),
-            Radices::Hex => format!("0x{:08x}", value.value),
+            Radices::Binary => format!("0b{:08b}", value.value),
+            Radices::Hex => format!("0x{:02x}", value.value),
             Radices::Decimal => format!("{:010}", value.value),
         }
     }
@@ -58,6 +58,7 @@ impl LabelColumn for MemoryColumn {
 
 pub struct MemoryView {
     view_wrapper: TypedColumnView<MemoryRow, gtk::NoSelection>,
+    curr_radix: Radices,
 }
 
 #[derive(Debug)]
@@ -105,7 +106,10 @@ impl SimpleComponent for MemoryView {
             });
         });
 
-        let model = MemoryView { view_wrapper };
+        let model = MemoryView {
+            view_wrapper,
+            curr_radix: Radices::Hex,
+        };
 
         let my_view = &model.view_wrapper.view;
         my_view.set_show_row_separators(true);
@@ -117,21 +121,17 @@ impl SimpleComponent for MemoryView {
     fn update(&mut self, msg: Self::Input, _sender: ComponentSender<Self>) {
         match msg {
             MemoryMsg::UpdateMemory(new_mem) => {
-                let v = self.view_wrapper.get(0);
-
-                if let Some(radix) = v.iter().next() {
-                    let radix = radix.borrow().value.radix;
-
-                    self.view_wrapper.clear();
-                    new_mem.into_iter().enumerate().for_each(|(idx, val)| {
-                        self.view_wrapper.append(MemoryRow {
-                            addr: idx as u32,
-                            value: RadixedValue { radix, value: val },
-                        });
-                    })
-                }
+                let radix = self.curr_radix;
+                self.view_wrapper.clear();
+                new_mem.into_iter().enumerate().for_each(|(idx, val)| {
+                    self.view_wrapper.append(MemoryRow {
+                        addr: idx as u32,
+                        value: RadixedValue { radix, value: val },
+                    });
+                })
             }
             MemoryMsg::UpdateRadix(radix) => {
+                self.curr_radix = radix;
                 let mut new_list: Vec<u8> = Vec::new();
 
                 (0..self.view_wrapper.len()).for_each(|v| {

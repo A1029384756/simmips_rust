@@ -33,6 +33,7 @@ features = [
   "settings",
   "plus",
   "emergency-number",
+  "floppy",
   "arrow-redo-filled",
   "arrow-undo-filled",
   "arrow-step-in-right-filled",

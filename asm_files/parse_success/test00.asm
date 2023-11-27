@@ -15,4 +15,4 @@ var6:	.ascii "hello"
 var7:	.asciiz "goodbye"
 
 	.text
-	
+main:

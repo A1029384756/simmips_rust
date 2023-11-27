@@ -6,13 +6,14 @@ cvar:	.byte	3
 
 	.text
 main:	
-	li $t0, 45
+	lui $t0, 45
+  srl $t0, $t0, 16
 	lw $t1, avar
-	lh $t2, bvar
-	lb $t2, cvar
+	lhu $t2, bvar
+	lbu $t2, cvar
 	sw $t1, avar
 	sh $t2, bvar
 	sb $t2, cvar
 
-	move $t0, $0
+	addi $t0, $0, 0
 	

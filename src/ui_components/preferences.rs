@@ -26,9 +26,9 @@ pub enum UpdatePreferencesInput {
 
 #[derive(Debug)]
 pub enum UpdatePreferencesOutput {
-    HistorySizeChanged(usize),
-    RadixChanged(Radices),
-    ThemeChanged,
+    HistorySize(usize),
+    Radix(Radices),
+    Theme,
 }
 
 #[relm4::component(pub)]
@@ -160,15 +160,13 @@ impl Component for Preferences {
                     }
                 };
 
-                sender
-                    .output(UpdatePreferencesOutput::ThemeChanged)
-                    .unwrap();
+                sender.output(UpdatePreferencesOutput::Theme).unwrap();
             }
             UpdatePreferencesInput::HistorySize(size) => {
                 if self.history_size != size {
                     self.history_size = size;
                     sender
-                        .output(UpdatePreferencesOutput::HistorySizeChanged(size))
+                        .output(UpdatePreferencesOutput::HistorySize(size))
                         .unwrap();
                 }
             }
@@ -176,7 +174,7 @@ impl Component for Preferences {
                 if self.radix != radix {
                     self.radix = radix;
                     sender
-                        .output(UpdatePreferencesOutput::RadixChanged(radix))
+                        .output(UpdatePreferencesOutput::Radix(radix))
                         .unwrap();
                 }
             }

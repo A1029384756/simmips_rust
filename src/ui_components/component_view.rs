@@ -219,7 +219,7 @@ impl SimpleComponent for ComponentView {
     fn update(&mut self, msg: Self::Input, _sender: ComponentSender<Self>) {
         match msg {
             CPUViewMessage::Update(cpu) => {
-                self.cpu = cpu;
+                self.cpu = *cpu;
                 self.draw();
             }
             CPUViewMessage::Resize(size) => {
@@ -326,7 +326,7 @@ impl ComponentView {
                 .par_chunks_mut(base_buf.n_channels() as usize)
                 .for_each(|pixel| {
                     fn invert(c: u8) -> u8 {
-                        (255 as i16 - c as i16) as u8
+                        (255_i16 - c as i16) as u8
                     }
 
                     pixel[0] = invert(pixel[0]);
